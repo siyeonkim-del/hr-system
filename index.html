@@ -1024,11 +1024,19 @@ async function submitMyLeave() {
 
   // 보건휴가 월 1일 제한 체크
   if(cat==='기타휴가' && subVal==='보건휴가') {
-    const fromMonth = from_date.slice(0,7); // YYYY-MM
+    // 신청 기간이 하루인지 체크
+    const d1 = new Date(from_date), d2 = new Date(to_date);
+    const diffDays = Math.ceil((d2-d1)/86400000)+1;
+    if(diffDays > 1) {
+      return alert('보건휴가는 하루만 신청 가능합니다.');
+    }
+    // 같은 달에 이미 사용했는지 체크
+    const fromMonth = from_date.slice(0,7);
     const existing = await api(`leave_requests?employee_id=eq.${currentEmp.id}&type=eq.기타휴가 - 보건휴가&status=neq.취소`);
     const usedThisMonth = (existing||[]).filter(l=>l.from_date&&l.from_date.startsWith(fromMonth));
     if(usedThisMonth.length > 0) {
-      return alert(`${fromMonth.replace('-','년 ')}월에 이미 보건휴가를 사용했어요. 보건휴가는 월 1일만 사용 가능합니다.`);
+      return alert(`${fromMonth.slice(0,4)}년 ${fromMonth.slice(5,7)}월에 이미 보건휴가를 사용했어요.
+보건휴가는 월 1일만 사용 가능합니다.`);
     }
   }
 
