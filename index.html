@@ -552,20 +552,21 @@ async function renderOrg() {
 
 function openOrgOrderModal() {
   const allDepts=[...new Set(allEmployees.map(e=>e.dept).filter(Boolean))].filter(d=>d!=='대표');
-  let current = deptOrder ? deptOrder.filter(d=>allDepts.includes(d)) : allDepts;
+  let current = deptOrder ? deptOrder.filter(d=>allDepts.includes(d)) : [...allDepts];
   allDepts.forEach(d=>{ if(!current.includes(d)) current.push(d); });
-
-  document.getElementById('org-order-list').innerHTML = current.map((d,i)=>`
-    <div id="order-item-${i}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f1f5f9;border-radius:8px;margin-bottom:8px">
-      <span style="color:#94a3b8;font-size:16px;cursor:grab">⠿</span>
-      <span style="font-weight:600;flex:1">${d}</span>
-      <div style="display:flex;gap:4px">
-        <button onclick="movedept(${i},-1)" style="background:none;border:1px solid #e2e8f0;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:14px">↑</button>
-        <button onclick="movedept(${i},1)" style="background:none;border:1px solid #e2e8f0;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:14px">↓</button>
-      </div>
-    </div>`).join('');
   window._tempDeptOrder = [...current];
+  renderOrgOrderList();
   document.getElementById('org-order-modal').classList.add('open');
+}
+
+function renderOrgOrderList() {
+  const current = window._tempDeptOrder;
+  document.getElementById('org-order-list').innerHTML = current.map((d,i)=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f1f5f9;border-radius:8px;margin-bottom:8px">
+      <span style="font-weight:600;flex:1">${d}</span>
+      <button onclick="movedept(${i},-1)" style="background:white;border:1px solid #e2e8f0;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:14px;line-height:1">↑</button>
+      <button onclick="movedept(${i},1)" style="background:white;border:1px solid #e2e8f0;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:14px;line-height:1">↓</button>
+    </div>`).join('');
 }
 
 function movedept(idx, dir) {
@@ -574,7 +575,7 @@ function movedept(idx, dir) {
   if(newIdx < 0 || newIdx >= order.length) return;
   [order[idx], order[newIdx]] = [order[newIdx], order[idx]];
   window._tempDeptOrder = order;
-  openOrgOrderModal();
+  renderOrgOrderList();
 }
 
 function saveOrgOrder() {
@@ -623,8 +624,8 @@ renderDashboard();
     <div style="font-size:12px;color:#64748b;margin-bottom:16px">↑↓ 버튼으로 순서를 조정하세요</div>
     <div id="org-order-list"></div>
     <div style="display:flex;gap:8px;margin-top:16px">
-      <button class="btn btn-primary" style="flex:1" onclick="saveOrgOrder()">저장하기</button>
-      <button class="btn btn-gray" onclick="closeModal('org-order-modal')">취소</button>
+      <button class="btn btn-primary" style="flex:1;pointer-events:auto" onclick="saveOrgOrder()">저장하기</button>
+      <button class="btn btn-gray" style="pointer-events:auto" onclick="closeModal('org-order-modal')">취소</button>
     </div>
   </div>
 </div>
