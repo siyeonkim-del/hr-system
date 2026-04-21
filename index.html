@@ -121,9 +121,9 @@
   <div id="emp-sidebar" style="width:200px;background:#ffffff;border-right:1px solid #e2e8f0;padding:24px 14px;display:flex;flex-direction:column;position:fixed;top:0;bottom:0;z-index:10">
     <div style="font-size:18px;font-weight:900;margin-bottom:4px;cursor:pointer" onclick="showEmpTab('my-info')">ZENITH HR</div>
     <div style="font-size:10px;color:#3b82f6;letter-spacing:2px;margin-bottom:28px">PEOPLE PLATFORM</div>
-    <button class="nav-btn active" id="etab-my-info" onclick="showEmpTab('my-info',this)">◉ 내 정보</button>
-    <button class="nav-btn" id="etab-my-leave" onclick="showEmpTab('my-leave',this)">◷ 휴가 신청</button>
-    <button class="nav-btn" id="etab-org" onclick="showEmpTab('org',this)">◌ 조직도</button>
+    <button class="nav-btn active" id="etab-my-info" onclick="showEmpTab('my-info',this)">내 정보</button>
+    <button class="nav-btn" id="etab-my-leave" onclick="showEmpTab('my-leave',this)">휴가 신청</button>
+    <button class="nav-btn" id="etab-org" onclick="showEmpTab('org',this)">조직도</button>
     <div style="margin-top:auto;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:12px;padding:14px">
       <div style="font-size:11px;color:#64748b">로그인 중</div>
       <div style="font-size:13px;font-weight:700;margin-top:2px" id="emp-sidebar-name">-</div>
@@ -206,10 +206,10 @@
 <div id="sidebar">
   <div class="logo" onclick="showPage('dashboard',null)" style="cursor:pointer">ZENITH HR</div>
   <div class="logo-sub" onclick="showPage('dashboard',null)" style="cursor:pointer">PEOPLE PLATFORM</div>
-  <button class="nav-btn" onclick="showPage('employees',this)">◉ 직원 관리</button>
-  <button class="nav-btn" onclick="showPage('leave',this)">◷ 휴가·근태</button>
-  <button class="nav-btn" onclick="showPage('org',this)">◌ 조직도</button>
-  <button class="nav-btn" onclick="showPage('holidays',this)">◎ 공휴일 관리</button>
+  <button class="nav-btn" onclick="showPage('employees',this)">직원 관리</button>
+  <button class="nav-btn" onclick="showPage('leave',this)">휴가·근태</button>
+  <button class="nav-btn" onclick="showPage('holidays',this)">공휴일 관리</button>
+  <button class="nav-btn" onclick="showPage('org',this)">조직도</button>
   <div class="user-card">
     <div style="font-size:11px;color:#64748b">관리자</div>
     <div style="font-size:13px;font-weight:700;margin-top:2px">김시연</div>
@@ -1215,8 +1215,8 @@ initApp();
       <div class="page-title">공휴일 관리</div>
     </div>
     <div class="page-sub">공휴일을 등록하면 연차 신청 시 자동으로 제외됩니다</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-      <div class="card">
+    <div style="display:grid;grid-template-columns:320px 1fr;gap:20px">
+      <div class="card" style="align-self:start">
         <div class="card-title">공휴일 등록</div>
         <div style="margin-bottom:10px">
           <div style="font-size:12px;color:#64748b;margin-bottom:4px">날짜</div>
