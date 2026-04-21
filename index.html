@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Zenith HR 시스템</title>
 <style>
@@ -85,10 +86,109 @@
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: #f8fafc; }
   ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+  /* 로그인 */
+  #login-page { display:flex; align-items:center; justify-content:center; min-height:100vh; background:#f8fafc; }
+  .login-box { background:white; border:1px solid #e2e8f0; border-radius:20px; padding:40px; width:380px; box-shadow:0 4px 24px #0000000d; }
+  .login-logo { font-size:22px; font-weight:900; color:#1e293b; margin-bottom:4px; }
+  .login-sub { font-size:12px; color:#3b82f6; letter-spacing:2px; margin-bottom:32px; }
+  .login-label { font-size:12px; color:#64748b; margin-bottom:6px; }
+  .login-input { width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px; font-family:inherit; outline:none; color:#1e293b; background:#f8fafc; margin-bottom:16px; }
+  .login-input:focus { border-color:#3b82f644; background:white; }
+  .login-btn { width:100%; padding:12px; background:#1e293b; color:white; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:4px; }
+  .login-btn:hover { background:#334155; }
+  .login-error { color:#ef4444; font-size:12px; margin-top:8px; text-align:center; min-height:18px; }
 </style>
 </head>
 <body>
 
+<!-- 로그인 페이지 -->
+<div id="login-page" style="display:none">
+  <div class="login-box">
+    <div class="login-logo">ZENITH HR</div>
+    <div class="login-sub">PEOPLE PLATFORM</div>
+    <div class="login-label">이메일</div>
+    <input class="login-input" type="email" id="login-email" placeholder="이메일을 입력하세요">
+    <div class="login-label">비밀번호</div>
+    <input class="login-input" type="password" id="login-pw" placeholder="비밀번호를 입력하세요" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">로그인</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- 직원 화면 -->
+<div id="employee-page" style="display:none">
+  <div id="emp-sidebar" style="width:200px;background:#ffffff;border-right:1px solid #e2e8f0;padding:24px 14px;display:flex;flex-direction:column;position:fixed;top:0;bottom:0;z-index:10">
+    <div style="font-size:18px;font-weight:900;margin-bottom:4px;cursor:pointer" onclick="showEmpTab('my-info')">ZENITH HR</div>
+    <div style="font-size:10px;color:#3b82f6;letter-spacing:2px;margin-bottom:28px">PEOPLE PLATFORM</div>
+    <button class="nav-btn active" id="etab-my-info" onclick="showEmpTab('my-info',this)">◉ 내 정보</button>
+    <button class="nav-btn" id="etab-my-leave" onclick="showEmpTab('my-leave',this)">◷ 휴가 신청</button>
+    <button class="nav-btn" id="etab-org" onclick="showEmpTab('org',this)">◌ 조직도</button>
+    <div style="margin-top:auto;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:12px;padding:14px">
+      <div style="font-size:11px;color:#64748b">로그인 중</div>
+      <div style="font-size:13px;font-weight:700;margin-top:2px" id="emp-sidebar-name">-</div>
+      <div style="font-size:11px;color:#3b82f6" id="emp-sidebar-role">-</div>
+      <button onclick="doLogout()" style="margin-top:8px;width:100%;padding:5px;border:1px solid #e2e8f0;border-radius:6px;background:none;cursor:pointer;font-size:11px;color:#64748b">로그아웃</button>
+    </div>
+  </div>
+  <div style="margin-left:200px;padding:32px;min-height:100vh;background:#f8fafc">
+
+    <!-- 내 정보 -->
+    <div id="emp-tab-my-info" class="emp-tab">
+      <div style="font-size:24px;font-weight:900;margin-bottom:6px">내 정보</div>
+      <div style="color:#64748b;font-size:13px;margin-bottom:24px">나의 프로필 및 연차 현황</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:24px">
+          <div style="font-size:14px;font-weight:700;margin-bottom:16px">프로필</div>
+          <div id="my-profile-rows"></div>
+        </div>
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:24px">
+          <div style="font-size:14px;font-weight:700;margin-bottom:16px">연차 현황</div>
+          <div id="my-leave-stats"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 휴가 신청 -->
+    <div id="emp-tab-my-leave" class="emp-tab" style="display:none">
+      <div style="font-size:24px;font-weight:900;margin-bottom:6px">휴가 신청</div>
+      <div style="color:#64748b;font-size:13px;margin-bottom:24px">휴가를 신청하고 현황을 확인하세요</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:24px">
+          <div style="font-size:14px;font-weight:700;margin-bottom:16px">새 휴가 신청</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div>
+              <div style="font-size:12px;color:#64748b;margin-bottom:4px">휴가 종류</div>
+              <select id="my-lv-type" style="width:100%"><option>연차</option><option>반차</option><option>병가</option><option>경조사</option></select>
+            </div>
+            <div></div>
+            <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">시작일</div><input type="date" id="my-lv-from" style="width:100%"></div>
+            <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">종료일</div><input type="date" id="my-lv-to" style="width:100%"></div>
+          </div>
+          <div style="margin-bottom:10px"><div style="font-size:12px;color:#64748b;margin-bottom:4px">사유</div><input type="text" id="my-lv-reason" placeholder="사유를 입력하세요" style="width:100%"></div>
+          <button class="btn btn-primary" style="width:100%" onclick="submitMyLeave()">신청하기</button>
+        </div>
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:24px">
+          <div style="font-size:14px;font-weight:700;margin-bottom:16px">나의 휴가 신청 현황</div>
+          <div id="my-leave-list"><div class="loading">로딩 중...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 조직도 -->
+    <div id="emp-tab-org" class="emp-tab" style="display:none">
+      <div style="font-size:24px;font-weight:900;margin-bottom:6px">조직도</div>
+      <div style="color:#64748b;font-size:13px;margin-bottom:24px">전사 조직 구조</div>
+      <div class="legend" id="emp-org-legend"></div>
+      <div class="org-wrap">
+        <div class="org-tree" id="emp-org-tree"><div class="loading">로딩 중...</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="admin-page" style="display:none">
 <div id="sidebar">
   <div class="logo" onclick="showPage('dashboard',null)" style="cursor:pointer">ZENITH HR</div>
   <div class="logo-sub" onclick="showPage('dashboard',null)" style="cursor:pointer">PEOPLE PLATFORM</div>
@@ -366,6 +466,7 @@ async function renderEmps() {
   document.getElementById('emp-count').textContent=`전체 ${allEmployees.length}명`;
   const sel = document.getElementById('lv-emp');
   sel.innerHTML='<option value="">직원 선택</option>'+allEmployees.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+  sel.onchange = updateLeaveTypeInfo;
   filterEmps();
 }
 
@@ -439,6 +540,7 @@ async function renderLeave() {
   if(!allEmployees.length) allEmployees = await api('employees?select=*')||[];
   const sel=document.getElementById('lv-emp');
   sel.innerHTML='<option value="">직원 선택</option>'+allEmployees.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+  sel.onchange = updateLeaveTypeInfo;
   document.getElementById('leave-list').innerHTML=allLeaves.map(l=>{
     const emp=allEmployees.find(e=>e.id===l.employee_id);
     const name=emp?.name||l.employee_name||'알 수 없음';
@@ -479,6 +581,41 @@ async function renderLeave() {
 
 async function setLeave(id,status) {
   await api(`leave_requests?id=eq.${id}`,'PATCH',{status}); renderLeave();
+}
+
+function updateLeaveTypeInfo() {
+  const type = document.getElementById('lv-type').value;
+  const empId = document.getElementById('lv-emp').value;
+  const infoEl = document.getElementById('lv-type-info');
+  if(!empId) { infoEl.style.display='none'; return; }
+  const emp = allEmployees.find(e=>e.id===empId);
+  if(!emp||!emp.join_date) { infoEl.style.display='none'; return; }
+
+  const join = new Date(emp.join_date);
+  const today = new Date();
+  const oneYear = new Date(join); oneYear.setFullYear(oneYear.getFullYear()+1);
+  const isUnderOneYear = today < oneYear;
+
+  const total = calcAnnualLeave(emp.join_date);
+  if(type==='월차(1년미만)') {
+    if(!isUnderOneYear) {
+      infoEl.style.cssText='font-size:11px;color:#ef4444;margin-bottom:8px;padding:6px 10px;background:#fef2f2;border-radius:6px;display:block';
+      infoEl.textContent='⚠️ 1년 이상 근무자는 월차를 사용할 수 없어요.';
+    } else {
+      infoEl.style.cssText='font-size:11px;color:#8b5cf6;margin-bottom:8px;padding:6px 10px;background:#f5f3ff;border-radius:6px;display:block';
+      infoEl.textContent=`✓ 1년 미만 월차 사용 가능 (부여 ${total}일)`;
+    }
+  } else if(type==='연차(1년이상)') {
+    if(isUnderOneYear) {
+      infoEl.style.cssText='font-size:11px;color:#ef4444;margin-bottom:8px;padding:6px 10px;background:#fef2f2;border-radius:6px;display:block';
+      infoEl.textContent='⚠️ 1년 미만 근무자는 연차를 사용할 수 없어요.';
+    } else {
+      infoEl.style.cssText='font-size:11px;color:#3b82f6;margin-bottom:8px;padding:6px 10px;background:#eff6ff;border-radius:6px;display:block';
+      infoEl.textContent=`✓ 연차 사용 가능 (부여 ${total}일)`;
+    }
+  } else {
+    infoEl.style.display='none';
+  }
 }
 
 async function addLeave() {
@@ -671,7 +808,211 @@ function calcAnnualLeave(joinDateStr) {
 }
 
 
-renderDashboard();
+// ── AUTH ──
+const ADMIN_EMAIL = 'siyeon.kim@zenithcompany.net';
+let supabaseClient = null;
+let currentUser = null;
+let currentEmp = null;
+
+function getSupabase() {
+  if(!supabaseClient) {
+    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  }
+  return supabaseClient;
+}
+
+async function initApp() {
+  const sb = getSupabase();
+  const { data: { session } } = await sb.auth.getSession();
+  if(session) {
+    currentUser = session.user;
+    await loadUserAndRoute();
+  } else {
+    showLoginPage();
+  }
+}
+
+function showLoginPage() {
+  document.getElementById('login-page').style.display='flex';
+  document.getElementById('admin-page').style.display='none';
+  document.getElementById('employee-page').style.display='none';
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pw = document.getElementById('login-pw').value;
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  if(!email||!pw) { errEl.textContent='이메일과 비밀번호를 입력해주세요.'; return; }
+  const sb = getSupabase();
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
+  if(error) { errEl.textContent='이메일 또는 비밀번호가 올바르지 않습니다.'; return; }
+  currentUser = data.user;
+  await loadUserAndRoute();
+}
+
+async function loadUserAndRoute() {
+  // 직원 정보 찾기
+  const emps = await api('employees?select=*');
+  allEmployees = emps||[];
+  currentEmp = allEmployees.find(e=>e.email===currentUser.email);
+
+  if(currentUser.email === ADMIN_EMAIL) {
+    // 관리자
+    document.getElementById('login-page').style.display='none';
+    document.getElementById('employee-page').style.display='none';
+    document.getElementById('admin-page').style.display='flex';
+    renderDashboard();
+  } else {
+    // 직원
+    document.getElementById('login-page').style.display='none';
+    document.getElementById('admin-page').style.display='none';
+    document.getElementById('employee-page').style.display='flex';
+    if(currentEmp) {
+      document.getElementById('emp-sidebar-name').textContent = currentEmp.name;
+      document.getElementById('emp-sidebar-role').textContent = `${currentEmp.dept} · ${currentEmp.role}`;
+    }
+    showEmpTab('my-info');
+  }
+}
+
+async function doLogout() {
+  const sb = getSupabase();
+  await sb.auth.signOut();
+  currentUser = null; currentEmp = null;
+  showLoginPage();
+}
+
+// ── 직원 탭 ──
+function showEmpTab(id, btn) {
+  document.querySelectorAll('.emp-tab').forEach(t=>t.style.display='none');
+  document.querySelectorAll('#emp-sidebar .nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('emp-tab-'+id).style.display='block';
+  const tabBtn = document.getElementById('etab-'+id);
+  if(tabBtn) tabBtn.classList.add('active');
+  if(id==='my-info') renderMyInfo();
+  if(id==='my-leave') renderMyLeave();
+  if(id==='org') renderEmpOrg();
+}
+
+function renderMyInfo() {
+  if(!currentEmp) { document.getElementById('my-profile-rows').innerHTML='<div class="empty">직원 정보를 찾을 수 없어요</div>'; return; }
+  const fields = [['이름',currentEmp.name],['부서',currentEmp.dept],['직무',currentEmp.role],['이메일',currentEmp.email],['연락처',currentEmp.phone||'-'],['입사일',currentEmp.join_date||'-']];
+  document.getElementById('my-profile-rows').innerHTML = fields.map(([k,v])=>`
+    <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:13px">
+      <span style="color:#64748b">${k}</span><span style="font-weight:600">${v}</span>
+    </div>`).join('');
+
+  const total = calcAnnualLeave(currentEmp.join_date);
+  document.getElementById('my-leave-stats').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+      <div style="background:#f5f3ff;border-radius:12px;padding:16px;text-align:center">
+        <div style="font-size:22px;font-weight:900;color:#8b5cf6">${total}</div>
+        <div style="font-size:11px;color:#64748b;margin-top:4px">발생</div>
+      </div>
+      <div style="background:#fef9ec;border-radius:12px;padding:16px;text-align:center">
+        <div style="font-size:22px;font-weight:900;color:#f59e0b" id="my-used-count">-</div>
+        <div style="font-size:11px;color:#64748b;margin-top:4px">사용</div>
+      </div>
+      <div style="background:#f0fdf4;border-radius:12px;padding:16px;text-align:center">
+        <div style="font-size:22px;font-weight:900;color:#10b981" id="my-remaining-count">-</div>
+        <div style="font-size:11px;color:#64748b;margin-top:4px">잔여</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#64748b">입사일 기준 자동 계산</div>`;
+
+  // 사용 연차 계산
+  api(`leave_requests?employee_id=eq.${currentEmp.id}&status=eq.승인`).then(leaves=>{
+    const used = (leaves||[]).length;
+    const remaining = Math.max(0, total - used);
+    document.getElementById('my-used-count').textContent = used;
+    document.getElementById('my-remaining-count').textContent = remaining;
+  });
+}
+
+async function renderMyLeave() {
+  if(!currentEmp) return;
+  const leaves = await api(`leave_requests?employee_id=eq.${currentEmp.id}&order=created_at.desc`)||[];
+  document.getElementById('my-leave-list').innerHTML = leaves.length ? leaves.map(l=>{
+    const c = statusColors[l.status]||'#64748b';
+    return `<div style="background:#f8fafc;border-radius:10px;padding:12px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-weight:700;font-size:13px">${l.type}</span>
+        <span class="badge" style="background:${c}22;color:${c};border:1px solid ${c}44">${l.status}</span>
+      </div>
+      <div style="font-size:12px;color:#64748b">${l.from_date} ~ ${l.to_date}</div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:2px">${l.reason||''}</div>
+    </div>`;
+  }).join('') : '<div class="empty">신청한 휴가가 없어요</div>';
+}
+
+async function submitMyLeave() {
+  if(!currentEmp) return;
+  const type = document.getElementById('my-lv-type').value;
+  const from_date = document.getElementById('my-lv-from').value;
+  const to_date = document.getElementById('my-lv-to').value;
+  const reason = document.getElementById('my-lv-reason').value;
+  if(!from_date||!to_date) return alert('시작일과 종료일을 입력해주세요.');
+  await api('leave_requests','POST',{employee_id:currentEmp.id,employee_name:currentEmp.name,type,from_date,to_date,reason,status:'대기'});
+  document.getElementById('my-lv-from').value='';
+  document.getElementById('my-lv-to').value='';
+  document.getElementById('my-lv-reason').value='';
+  renderMyLeave();
+  alert('휴가 신청이 완료되었습니다!');
+}
+
+async function renderEmpOrg() {
+  if(!allEmployees.length) allEmployees = await api('employees?select=*&order=join_date.asc')||[];
+  const depts=[...new Set(allEmployees.map(e=>e.dept).filter(Boolean))];
+  depts.forEach(d=>getDeptColor(d));
+
+  let orderedDepts = deptOrder ? deptOrder.filter(d=>depts.includes(d)) : [...depts].filter(d=>d!=='대표');
+  depts.filter(d=>d!=='대표').forEach(d=>{ if(!orderedDepts.includes(d)) orderedDepts.push(d); });
+
+  document.getElementById('emp-org-legend').innerHTML=orderedDepts.map(d=>`
+    <div class="legend-item"><div class="legend-dot" style="background:${getDeptColor(d)}"></div>${d} (${allEmployees.filter(e=>e.dept===d).length}명)</div>`).join('');
+
+  const ceo=allEmployees.find(e=>e.dept==='대표'||e.role==='대표');
+  if(!ceo){document.getElementById('emp-org-tree').innerHTML='<div class="empty">조직 데이터 없음</div>';return;}
+
+  const deptGroups={};
+  allEmployees.filter(e=>e.id!==ceo.id).forEach(e=>{
+    if(e.dept){if(!deptGroups[e.dept])deptGroups[e.dept]=[];deptGroups[e.dept].push(e);}
+  });
+
+  const c0=getDeptColor(ceo.dept);
+  document.getElementById('emp-org-tree').innerHTML=`
+  <div class="org-node">
+    <div style="background:#ffffff;border:2px solid ${c0}55;border-radius:14px;padding:14px 20px;text-align:center;box-shadow:0 0 20px ${c0}20">
+      <div style="font-size:15px;font-weight:800">${ceo.name}</div>
+      <div style="font-size:12px;color:#64748b;margin-top:2px">${ceo.role}</div>
+      <div style="font-size:11px;font-weight:600;margin-top:4px;color:${c0}">${ceo.dept}</div>
+    </div>
+    <div class="org-line-v"></div>
+    <div class="org-children">
+      ${orderedDepts.map(dept=>{
+        const emps=deptGroups[dept]||[];
+        const c=getDeptColor(dept);
+        return `<div class="org-child">
+          <div class="org-line-v"></div>
+          <div style="background:#ffffff;border:1.5px solid ${c}55;border-radius:10px;padding:10px 14px;text-align:center;min-width:110px;margin-bottom:8px">
+            <div style="font-size:12px;font-weight:700;color:${c}">${dept}</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px">${emps.length}명</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
+            ${emps.map(e=>`<div style="background:#f8fafc;border:1px solid ${c}33;border-radius:8px;padding:7px 12px;text-align:center;min-width:100px${e.id===currentEmp?.id?';border-color:'+c+';background:'+c+'11':''}">
+              <div style="font-size:12px;font-weight:700">${e.name}${e.id===currentEmp?.id?' 👈':''}</div>
+              <div style="font-size:10px;color:#64748b;margin-top:1px">${e.role||''}</div>
+            </div>`).join('')}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+// 초기 실행
+initApp();
 </script>
 
 <!-- 조직도 순서 모달 -->
@@ -686,5 +1027,6 @@ renderDashboard();
     </div>
   </div>
 </div>
+</div><!-- end admin-page -->
 </body>
 </html>
