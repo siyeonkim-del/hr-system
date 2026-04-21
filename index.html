@@ -61,6 +61,7 @@
 
   .modal-bg { position: fixed; inset: 0; background: #00000088; z-index: 200; display: none; align-items: center; justify-content: center; }
   .modal-bg.open { display: flex; }
+  .modal button { position: relative; z-index: 210; }
   .modal { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; padding: 32px; width: 460px; max-width: 90vw; max-height: 90vh; overflow-y: auto; }
   .modal h3 { font-size: 18px; font-weight: 800; margin-bottom: 20px; }
   .modal-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
@@ -561,12 +562,27 @@ function openOrgOrderModal() {
 
 function renderOrgOrderList() {
   const current = window._tempDeptOrder;
-  document.getElementById('org-order-list').innerHTML = current.map((d,i)=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f1f5f9;border-radius:8px;margin-bottom:8px">
-      <span style="font-weight:600;flex:1">${d}</span>
-      <button onclick="movedept(${i},-1)" style="background:white;border:1px solid #e2e8f0;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:14px;line-height:1">↑</button>
-      <button onclick="movedept(${i},1)" style="background:white;border:1px solid #e2e8f0;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:14px;line-height:1">↓</button>
-    </div>`).join('');
+  const container = document.getElementById('org-order-list');
+  container.innerHTML = '';
+  current.forEach((d,i) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f1f5f9;border-radius:8px;margin-bottom:8px';
+    const label = document.createElement('span');
+    label.style.cssText = 'font-weight:600;flex:1';
+    label.textContent = d;
+    const upBtn = document.createElement('button');
+    upBtn.textContent = '↑';
+    upBtn.style.cssText = 'background:white;border:1px solid #e2e8f0;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:14px';
+    upBtn.addEventListener('click', (e) => { e.stopPropagation(); movedept(i,-1); });
+    const downBtn = document.createElement('button');
+    downBtn.textContent = '↓';
+    downBtn.style.cssText = 'background:white;border:1px solid #e2e8f0;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:14px';
+    downBtn.addEventListener('click', (e) => { e.stopPropagation(); movedept(i,1); });
+    div.appendChild(label);
+    div.appendChild(upBtn);
+    div.appendChild(downBtn);
+    container.appendChild(div);
+  });
 }
 
 function movedept(idx, dir) {
@@ -618,7 +634,7 @@ renderDashboard();
 </script>
 
 <!-- 조직도 순서 모달 -->
-<div class="modal-bg" id="org-order-modal" onclick="closeModal('org-order-modal')">
+<div class="modal-bg" id="org-order-modal">
   <div class="modal" onclick="event.stopPropagation()">
     <h3>부서 순서 변경</h3>
     <div style="font-size:12px;color:#64748b;margin-bottom:16px">↑↓ 버튼으로 순서를 조정하세요</div>
