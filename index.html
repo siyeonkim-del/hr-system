@@ -1022,13 +1022,21 @@ async function submitMyLeave() {
   const reason = document.getElementById('my-lv-reason').value;
   if(!from_date||!to_date) return alert('시작일과 종료일을 입력해주세요.');
 
+  // 오전/오후 휴가는 하루만 신청 가능
+  if(subVal==='오전휴가' || subVal==='오후휴가') {
+    if(from_date !== to_date) {
+      return alert('오전휴가/오후휴가는 하루만 신청 가능합니다.
+시작일과 종료일을 같은 날로 설정해주세요.');
+    }
+  }
+
   // 보건휴가 월 1일 제한 체크
   if(cat==='기타휴가' && subVal==='보건휴가') {
     // 신청 기간이 하루인지 체크
     const d1 = new Date(from_date), d2 = new Date(to_date);
     const diffDays = Math.ceil((d2-d1)/86400000)+1;
     if(diffDays > 1) {
-      return alert('보건휴가는 하루만 신청 가능합니다.');
+      return alert('보건휴가는 월 1일 신청 가능합니다.');
     }
     // 같은 달에 이미 사용했는지 체크
     const fromMonth = from_date.slice(0,7);
