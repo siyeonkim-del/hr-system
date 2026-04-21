@@ -141,6 +141,7 @@
         <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:24px">
           <div style="font-size:14px;font-weight:700;margin-bottom:16px">프로필</div>
           <div id="my-profile-rows"></div>
+          <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="openChangePwModal()">🔒 비밀번호 변경</button>
         </div>
         <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:24px">
           <div style="font-size:14px;font-weight:700;margin-bottom:16px">연차 현황</div>
@@ -1012,6 +1013,26 @@ async function renderEmpOrg() {
   </div>`;
 }
 
+function openChangePwModal() {
+  document.getElementById('new-pw').value = '';
+  document.getElementById('new-pw-confirm').value = '';
+  document.getElementById('pw-change-error').textContent = '';
+  document.getElementById('change-pw-modal').classList.add('open');
+}
+
+async function changePassword() {
+  const pw = document.getElementById('new-pw').value;
+  const confirm = document.getElementById('new-pw-confirm').value;
+  const errEl = document.getElementById('pw-change-error');
+  if(pw.length < 8) { errEl.textContent = '비밀번호는 8자 이상이어야 해요.'; return; }
+  if(pw !== confirm) { errEl.textContent = '비밀번호가 일치하지 않아요.'; return; }
+  const sb = getSupabase();
+  const { error } = await sb.auth.updateUser({ password: pw });
+  if(error) { errEl.textContent = '변경 실패: ' + error.message; return; }
+  closeModal('change-pw-modal');
+  alert('비밀번호가 변경되었습니다! 다음 로그인부터 새 비밀번호를 사용해주세요.');
+}
+
 // 초기 실행
 initApp();
 </script>
@@ -1029,5 +1050,25 @@ initApp();
   </div>
 </div>
 </div><!-- end admin-page -->
+
+<!-- 비밀번호 변경 모달 -->
+<div class="modal-bg" id="change-pw-modal" onclick="closeModal('change-pw-modal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3>비밀번호 변경</h3>
+    <div style="margin-bottom:10px">
+      <div style="font-size:12px;color:#64748b;margin-bottom:4px">새 비밀번호</div>
+      <input type="password" id="new-pw" placeholder="새 비밀번호 입력 (8자 이상)" style="width:100%">
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;color:#64748b;margin-bottom:4px">새 비밀번호 확인</div>
+      <input type="password" id="new-pw-confirm" placeholder="비밀번호 재입력" style="width:100%">
+    </div>
+    <div id="pw-change-error" style="color:#ef4444;font-size:12px;margin-bottom:10px;min-height:16px"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:1" onclick="changePassword()">변경하기</button>
+      <button class="btn btn-gray" onclick="closeModal('change-pw-modal')">취소</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
