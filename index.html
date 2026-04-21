@@ -997,13 +997,13 @@ function updateDeductInfo() {
   const cat = document.getElementById('my-lv-category').value;
   const sub = document.getElementById('my-lv-subtype').value;
   const info = document.getElementById('my-lv-deduct-info');
-  if((cat==='연차'||cat==='건강검진휴가') && (sub==='오전휴가'||sub==='오후휴가')) {
+  if(cat==='연차' && (sub==='오전휴가'||sub==='오후휴가')) {
     info.textContent = '⏰ 0.5일 차감됩니다.';
     info.style.display='block';
   } else if(cat==='연차' && sub==='종일휴가') {
     info.textContent = '📅 1일 차감됩니다.';
     info.style.display='block';
-  } else if(cat==='경조휴가'||cat==='기타휴가') {
+  } else if(cat==='경조휴가'||cat==='기타휴가'||cat==='건강검진휴가') {
     info.textContent = '✅ 연차에서 차감되지 않습니다.';
     info.style.display='block';
   } else {
@@ -1030,7 +1030,7 @@ async function submitMyLeave() {
       days = Math.ceil((d2-d1)/86400000)+1;
     } else { days = 0.5; }
   } else if(cat==='건강검진휴가') {
-    days = 0.5;
+    days = 0; // 차감 없음
   }
 
   await api('leave_requests','POST',{employee_id:currentEmp.id,employee_name:currentEmp.name,type,from_date,to_date,days,reason,status:'승인'});
