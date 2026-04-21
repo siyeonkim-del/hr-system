@@ -192,7 +192,10 @@
 
   <!-- 조직도 -->
   <div id="page-org" class="page">
-    <div class="page-title">조직도</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div class="page-title">조직도</div>
+      <button class="btn btn-primary" onclick="openOrgOrderModal()">부서 순서 변경</button>
+    </div>
     <div class="page-sub">전사 조직 구조</div>
     <div class="legend" id="org-legend"></div>
     <div class="org-wrap">
@@ -491,12 +494,12 @@ async function addLeave() {
 }
 
 // ORG
+let deptOrder = JSON.parse(localStorage.getItem('deptOrder')||'null');
+
 async function renderOrg() {
   if(!allEmployees.length) allEmployees=await api('employees?select=*&order=join_date.asc')||[];
-  const depts=[...new Set(allEmployees.map(e=>e.dept).filter(Boolean))];
-  depts.forEach(d=>getDeptColor(d));
-  document.getElementById('org-legend').innerHTML=depts.map(d=>`
-    <div class="legend-item"><div class="legend-dot" style="background:${getDeptColor(d)}"></div>${d} (${allEmployees.filter(e=>e.dept===d).length}명)</div>`).join('');
+  const allDepts=[...new Set(allEmployees.map(e=>e.dept).filter(Boolean))];
+  allDepts.forEach(d=>getDeptColor(d));
 
   const ceo=allEmployees.find(e=>e.dept==='대표'||e.role==='대표');
   if(!ceo){document.getElementById('org-tree').innerHTML='<div class="empty">대표 직원 데이터 없음</div>';return;}
@@ -505,6 +508,14 @@ async function renderOrg() {
   allEmployees.filter(e=>e.id!==ceo.id).forEach(e=>{
     if(e.dept){if(!deptGroups[e.dept])deptGroups[e.dept]=[];deptGroups[e.dept].push(e);}
   });
+
+  // 순서 적용 (저장된 순서 or 기본)
+  let orderedDepts = deptOrder ? deptOrder.filter(d=>deptGroups[d]) : Object.keys(deptGroups);
+  // 새로 추가된 부서는 뒤에 추가
+  Object.keys(deptGroups).forEach(d=>{ if(!orderedDepts.includes(d)) orderedDepts.push(d); });
+
+  document.getElementById('org-legend').innerHTML=orderedDepts.map(d=>`
+    <div class="legend-item"><div class="legend-dot" style="background:${getDeptColor(d)}"></div>${d} (${allEmployees.filter(e=>e.dept===d).length}명)</div>`).join('');
 
   const c0=getDeptColor(ceo.dept);
   document.getElementById('org-tree').innerHTML=`
@@ -517,7 +528,8 @@ async function renderOrg() {
     </div>
     <div class="org-line-v"></div>
     <div class="org-children">
-      ${Object.entries(deptGroups).map(([dept,emps])=>{
+      ${orderedDepts.map(dept=>{
+        const emps=deptGroups[dept]||[];
         const c=getDeptColor(dept);
         return `<div class="org-child">
           <div class="org-line-v"></div>
@@ -536,6 +548,40 @@ async function renderOrg() {
       }).join('')}
     </div>
   </div>`;
+}
+
+function openOrgOrderModal() {
+  const allDepts=[...new Set(allEmployees.map(e=>e.dept).filter(Boolean))].filter(d=>d!=='대표');
+  let current = deptOrder ? deptOrder.filter(d=>allDepts.includes(d)) : allDepts;
+  allDepts.forEach(d=>{ if(!current.includes(d)) current.push(d); });
+
+  document.getElementById('org-order-list').innerHTML = current.map((d,i)=>`
+    <div id="order-item-${i}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f1f5f9;border-radius:8px;margin-bottom:8px">
+      <span style="color:#94a3b8;font-size:16px;cursor:grab">⠿</span>
+      <span style="font-weight:600;flex:1">${d}</span>
+      <div style="display:flex;gap:4px">
+        <button onclick="movedept(${i},-1)" style="background:none;border:1px solid #e2e8f0;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:14px">↑</button>
+        <button onclick="movedept(${i},1)" style="background:none;border:1px solid #e2e8f0;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:14px">↓</button>
+      </div>
+    </div>`).join('');
+  window._tempDeptOrder = [...current];
+  document.getElementById('org-order-modal').classList.add('open');
+}
+
+function movedept(idx, dir) {
+  const order = window._tempDeptOrder;
+  const newIdx = idx + dir;
+  if(newIdx < 0 || newIdx >= order.length) return;
+  [order[idx], order[newIdx]] = [order[newIdx], order[idx]];
+  window._tempDeptOrder = order;
+  openOrgOrderModal();
+}
+
+function saveOrgOrder() {
+  deptOrder = window._tempDeptOrder;
+  localStorage.setItem('deptOrder', JSON.stringify(deptOrder));
+  closeModal('org-order-modal');
+  renderOrg();
 }
 
 function openEditModal(id) {
@@ -569,5 +615,18 @@ async function saveEmployee() {
 
 renderDashboard();
 </script>
+
+<!-- 조직도 순서 모달 -->
+<div class="modal-bg" id="org-order-modal" onclick="closeModal('org-order-modal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3>부서 순서 변경</h3>
+    <div style="font-size:12px;color:#64748b;margin-bottom:16px">↑↓ 버튼으로 순서를 조정하세요</div>
+    <div id="org-order-list"></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-primary" style="flex:1" onclick="saveOrgOrder()">저장하기</button>
+      <button class="btn btn-gray" onclick="closeModal('org-order-modal')">취소</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
