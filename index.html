@@ -90,9 +90,8 @@
 <body>
 
 <div id="sidebar">
-  <div class="logo">ZENITH HR</div>
-  <div class="logo-sub">PEOPLE PLATFORM</div>
-  <button class="nav-btn active" onclick="showPage('dashboard',this)">◈ 대시보드</button>
+  <div class="logo" onclick="showPage('dashboard',null)" style="cursor:pointer">ZENITH HR</div>
+  <div class="logo-sub" onclick="showPage('dashboard',null)" style="cursor:pointer">PEOPLE PLATFORM</div>
   <button class="nav-btn" onclick="showPage('employees',this)">◉ 직원 관리</button>
   <button class="nav-btn" onclick="showPage('leave',this)">◷ 휴가·근태</button>
   <button class="nav-btn" onclick="showPage('org',this)">◌ 조직도</button>
@@ -306,6 +305,7 @@ function showPage(id, btn) {
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   if(btn) btn.classList.add('active');
+  else if(id==='dashboard') document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   if(id==='dashboard') renderDashboard();
   if(id==='employees') renderEmps();
   if(id==='leave') renderLeave();
