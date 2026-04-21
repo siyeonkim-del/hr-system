@@ -209,6 +209,7 @@
   <button class="nav-btn" onclick="showPage('employees',this)">◉ 직원 관리</button>
   <button class="nav-btn" onclick="showPage('leave',this)">◷ 휴가·근태</button>
   <button class="nav-btn" onclick="showPage('org',this)">◌ 조직도</button>
+  <button class="nav-btn" onclick="showPage('holidays',this)">◎ 공휴일 관리</button>
   <div class="user-card">
     <div style="font-size:11px;color:#64748b">관리자</div>
     <div style="font-size:13px;font-weight:700;margin-top:2px">김시연</div>
@@ -425,6 +426,7 @@ function showPage(id, btn) {
   if(id==='employees') renderEmps();
   if(id==='leave') renderLeave();
   if(id==='org') renderOrg();
+  if(id==='holidays') renderHolidays();
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
@@ -1047,12 +1049,12 @@ async function submitMyLeave() {
     }
   }
 
-  // 차감 일수 계산
+  // 차감 일수 계산 (주말+공휴일 제외)
+  await loadHolidays();
   let days = 0;
   if(cat==='연차') {
     if(subVal==='종일휴가') {
-      const d1=new Date(from_date), d2=new Date(to_date);
-      days = Math.ceil((d2-d1)/86400000)+1;
+      days = calcWorkingDays(from_date, to_date);
     } else { days = 0.5; }
   } else if(cat==='건강검진휴가') {
     days = 0; // 차감 없음
@@ -1137,6 +1139,60 @@ async function changePassword() {
   alert('비밀번호가 변경되었습니다! 다음 로그인부터 새 비밀번호를 사용해주세요.');
 }
 
+// ── 공휴일 ──
+let holidays = [];
+
+async function loadHolidays() {
+  const data = await api('holidays?select=*&order=date.asc');
+  holidays = (data||[]).map(h=>h.date);
+  return holidays;
+}
+
+async function renderHolidays() {
+  const data = await api('holidays?select=*&order=date.asc')||[];
+  holidays = data.map(h=>h.date);
+  document.getElementById('holiday-list').innerHTML = data.length ? data.map(h=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:13px">
+      <div>
+        <span style="font-weight:600">${h.name}</span>
+        <span style="color:#64748b;margin-left:8px">${h.date}</span>
+      </div>
+      <button onclick="deleteHoliday('${h.id}')" style="background:none;border:1px solid #ef444433;border-radius:6px;padding:3px 10px;color:#ef4444;cursor:pointer;font-size:11px">삭제</button>
+    </div>`).join('') : '<div class="empty">등록된 공휴일이 없어요</div>';
+}
+
+async function addHoliday() {
+  const date = document.getElementById('holiday-date').value;
+  const name = document.getElementById('holiday-name').value.trim();
+  if(!date||!name) return alert('날짜와 명칭을 입력해주세요.');
+  await api('holidays','POST',{date,name});
+  document.getElementById('holiday-date').value='';
+  document.getElementById('holiday-name').value='';
+  renderHolidays();
+}
+
+async function deleteHoliday(id) {
+  if(!confirm('삭제하시겠어요?')) return;
+  await api(`holidays?id=eq.${id}`,'DELETE');
+  renderHolidays();
+}
+
+// 실제 차감일수 계산 (주말+공휴일 제외)
+function calcWorkingDays(from_date, to_date) {
+  let count = 0;
+  const cur = new Date(from_date);
+  const end = new Date(to_date);
+  while(cur <= end) {
+    const dow = cur.getDay();
+    const dateStr = cur.toISOString().slice(0,10);
+    if(dow !== 0 && dow !== 6 && !holidays.includes(dateStr)) {
+      count++;
+    }
+    cur.setDate(cur.getDate()+1);
+  }
+  return count;
+}
+
 // 초기 실행
 initApp();
 </script>
@@ -1153,6 +1209,32 @@ initApp();
     </div>
   </div>
 </div>
+  <!-- 공휴일 관리 -->
+  <div id="page-holidays" class="page">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div class="page-title">공휴일 관리</div>
+    </div>
+    <div class="page-sub">공휴일을 등록하면 연차 신청 시 자동으로 제외됩니다</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div class="card">
+        <div class="card-title">공휴일 등록</div>
+        <div style="margin-bottom:10px">
+          <div style="font-size:12px;color:#64748b;margin-bottom:4px">날짜</div>
+          <input type="date" id="holiday-date" style="width:100%">
+        </div>
+        <div style="margin-bottom:12px">
+          <div style="font-size:12px;color:#64748b;margin-bottom:4px">공휴일 명칭</div>
+          <input type="text" id="holiday-name" placeholder="예: 어린이날" style="width:100%">
+        </div>
+        <button class="btn btn-primary" style="width:100%" onclick="addHoliday()">등록하기</button>
+      </div>
+      <div class="card">
+        <div class="card-title">등록된 공휴일</div>
+        <div id="holiday-list"><div class="loading">로딩 중...</div></div>
+      </div>
+    </div>
+  </div>
+
 </div><!-- end admin-page -->
 
 <!-- 비밀번호 변경 모달 -->
