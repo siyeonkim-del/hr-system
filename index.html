@@ -216,7 +216,28 @@
     <div id="detail-rows"></div>
     <div style="display:flex;gap:8px;margin-top:20px">
       <button class="btn btn-danger" id="detail-delete-btn">삭제</button>
+      <button class="btn btn-primary" id="detail-edit-btn">수정</button>
       <button class="btn btn-gray" style="flex:1" onclick="closeModal('emp-detail-modal')">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 직원 수정 모달 -->
+<div class="modal-bg" id="edit-emp-modal" onclick="closeModal('edit-emp-modal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3>직원 정보 수정</h3>
+    <input type="hidden" id="edit-id">
+    <div class="form-grid">
+      <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">이름 *</div><input type="text" id="edit-name" style="width:100%"></div>
+      <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">부서 *</div><input type="text" id="edit-dept" style="width:100%"></div>
+      <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">직무 *</div><input type="text" id="edit-role" style="width:100%"></div>
+      <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">이메일</div><input type="email" id="edit-email" style="width:100%"></div>
+      <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">연락처</div><input type="text" id="edit-phone" style="width:100%"></div>
+      <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">입사일</div><input type="date" id="edit-joindate" style="width:100%"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-primary" style="flex:1" onclick="saveEmployee()">저장하기</button>
+      <button class="btn btn-gray" onclick="closeModal('edit-emp-modal')">취소</button>
     </div>
   </div>
 </div>
@@ -382,6 +403,7 @@ function openEmpDetail(id) {
     ['입사일',emp.join_date||'-'],['부서',emp.dept||'-'],['직무',emp.role||'-']
   ].map(([k,v])=>`<div class="modal-row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
   document.getElementById('detail-delete-btn').onclick=()=>deleteEmployee(id);
+  document.getElementById('detail-edit-btn').onclick=()=>openEditModal(id);
   document.getElementById('emp-detail-modal').classList.add('open');
 }
 
@@ -516,6 +538,35 @@ async function renderOrg() {
     </div>
   </div>`;
 }
+
+function openEditModal(id) {
+  const emp = allEmployees.find(e=>e.id===id); if(!emp) return;
+  document.getElementById('edit-id').value = emp.id;
+  document.getElementById('edit-name').value = emp.name||'';
+  document.getElementById('edit-dept').value = emp.dept||'';
+  document.getElementById('edit-role').value = emp.role||'';
+  document.getElementById('edit-email').value = emp.email||'';
+  document.getElementById('edit-phone').value = emp.phone||'';
+  document.getElementById('edit-joindate').value = emp.join_date||'';
+  closeModal('emp-detail-modal');
+  document.getElementById('edit-emp-modal').classList.add('open');
+}
+
+async function saveEmployee() {
+  const id = document.getElementById('edit-id').value;
+  const name = document.getElementById('edit-name').value.trim();
+  const dept = document.getElementById('edit-dept').value.trim();
+  const role = document.getElementById('edit-role').value.trim();
+  const email = document.getElementById('edit-email').value.trim();
+  const phone = document.getElementById('edit-phone').value.trim();
+  const join_date = document.getElementById('edit-joindate').value;
+  if(!name||!dept||!role) return alert('이름, 부서, 직무는 필수입니다.');
+  await api(`employees?id=eq.${id}`, 'PATCH', {name, dept, role, email:email||null, phone:phone||null, join_date:join_date||null});
+  closeModal('edit-emp-modal');
+  renderEmps();
+  alert(`${name}님 정보가 수정되었습니다!`);
+}
+
 
 renderDashboard();
 </script>
