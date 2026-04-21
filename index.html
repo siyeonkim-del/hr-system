@@ -564,7 +564,7 @@ async function renderLeave() {
   allLeaves.filter(l=>l.status==='승인').forEach(l=>{
     const emp=allEmployees.find(e=>e.id===l.employee_id);
     const name=emp?.name||'알 수 없음';
-    leaveByEmp[name]=(leaveByEmp[name]||0)+1;
+    leaveByEmp[name]=(leaveByEmp[name]||0)+(l.days||1);
   });
   document.getElementById('att-list').innerHTML=allEmployees.map(e=>{
     const used=leaveByEmp[e.name]||0;
@@ -925,7 +925,7 @@ function renderMyInfo() {
 
   // 사용 연차 계산
   api(`leave_requests?employee_id=eq.${currentEmp.id}&status=eq.승인`).then(leaves=>{
-    const used = (leaves||[]).length;
+    const used = (leaves||[]).reduce((sum,l)=>sum+(l.days||1),0);
     const remaining = Math.max(0, total - used);
     document.getElementById('my-used-count').textContent = used;
     document.getElementById('my-remaining-count').textContent = remaining;
@@ -959,18 +959,73 @@ async function cancelMyLeave(id) {
   renderMyInfo();
 }
 
+function updateLeaveSubtype() {
+  const cat = document.getElementById('my-lv-category').value;
+  const subWrap = document.getElementById('my-lv-subtype-wrap');
+  const sub = document.getElementById('my-lv-subtype');
+  const info = document.getElementById('my-lv-deduct-info');
+
+  if(cat === '연차') {
+    subWrap.style.display='block';
+    sub.innerHTML = '<option value="종일휴가">종일휴가 (1일)</option><option value="오전휴가">오전휴가 (0.5일)</option><option value="오후휴가">오후휴가 (0.5일)</option>';
+  } else if(cat === '건강검진휴가') {
+    subWrap.style.display='block';
+    sub.innerHTML = '<option value="오전휴가">오전휴가 (0.5일)</option><option value="오후휴가">오후휴가 (0.5일)</option>';
+  } else if(cat === '기타휴가') {
+    subWrap.style.display='block';
+    sub.innerHTML = '<option value="공가">공가</option><option value="보건휴가">보건휴가</option><option value="출산휴가">출산휴가</option><option value="난임치료휴가">난임치료휴가</option><option value="배우자 출산휴가">배우자 출산휴가</option><option value="가족돌봄휴가">가족돌봄휴가</option><option value="유사산휴가">유사산휴가</option>';
+  } else {
+    subWrap.style.display='none';
+  }
+  updateDeductInfo();
+}
+
+function updateDeductInfo() {
+  const cat = document.getElementById('my-lv-category').value;
+  const sub = document.getElementById('my-lv-subtype').value;
+  const info = document.getElementById('my-lv-deduct-info');
+  if((cat==='연차'||cat==='건강검진휴가') && (sub==='오전휴가'||sub==='오후휴가')) {
+    info.textContent = '⏰ 0.5일 차감됩니다.';
+    info.style.display='block';
+  } else if(cat==='연차' && sub==='종일휴가') {
+    info.textContent = '📅 1일 차감됩니다.';
+    info.style.display='block';
+  } else if(cat==='경조휴가'||cat==='기타휴가') {
+    info.textContent = '✅ 연차에서 차감되지 않습니다.';
+    info.style.display='block';
+  } else {
+    info.style.display='none';
+  }
+}
+
 async function submitMyLeave() {
   if(!currentEmp) return;
-  const type = document.getElementById('my-lv-type').value;
+  const cat = document.getElementById('my-lv-category').value;
+  const subWrap = document.getElementById('my-lv-subtype-wrap');
+  const subVal = subWrap.style.display!=='none' ? document.getElementById('my-lv-subtype').value : '';
+  const type = subVal ? `${cat} - ${subVal}` : cat;
   const from_date = document.getElementById('my-lv-from').value;
   const to_date = document.getElementById('my-lv-to').value;
   const reason = document.getElementById('my-lv-reason').value;
   if(!from_date||!to_date) return alert('시작일과 종료일을 입력해주세요.');
-  await api('leave_requests','POST',{employee_id:currentEmp.id,employee_name:currentEmp.name,type,from_date,to_date,reason,status:'승인'});
+
+  // 차감 일수 계산
+  let days = 0;
+  if(cat==='연차') {
+    if(subVal==='종일휴가') {
+      const d1=new Date(from_date), d2=new Date(to_date);
+      days = Math.ceil((d2-d1)/86400000)+1;
+    } else { days = 0.5; }
+  } else if(cat==='건강검진휴가') {
+    days = 0.5;
+  }
+
+  await api('leave_requests','POST',{employee_id:currentEmp.id,employee_name:currentEmp.name,type,from_date,to_date,days,reason,status:'승인'});
   document.getElementById('my-lv-from').value='';
   document.getElementById('my-lv-to').value='';
   document.getElementById('my-lv-reason').value='';
   renderMyLeave();
+  renderMyInfo();
   alert('휴가 신청이 완료되었습니다!');
 }
 
