@@ -1025,8 +1025,7 @@ async function submitMyLeave() {
   // 오전/오후 휴가는 하루만 신청 가능
   if(subVal==='오전휴가' || subVal==='오후휴가') {
     if(from_date !== to_date) {
-      return alert('오전휴가/오후휴가는 하루만 신청 가능합니다.
-시작일과 종료일을 같은 날로 설정해주세요.');
+      return alert('오전휴가/오후휴가는 하루만 신청 가능합니다. 시작일과 종료일을 같은 날로 설정해주세요.');
     }
   }
 
