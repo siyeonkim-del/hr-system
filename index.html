@@ -6,15 +6,15 @@
 <title>Zenith HR 시스템</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: #0a0e1a; color: #f1f5f9; display: flex; min-height: 100vh; }
+  body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: #f8fafc; color: #1e293b; display: flex; min-height: 100vh; }
 
-  #sidebar { width: 200px; background: #0d1120; border-right: 1px solid #1e2a42; padding: 24px 14px; display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; z-index: 10; }
+  #sidebar { width: 200px; background: #ffffff; border-right: 1px solid #e2e8f0; padding: 24px 14px; display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; z-index: 10; }
   #sidebar .logo { font-size: 18px; font-weight: 900; margin-bottom: 4px; }
   #sidebar .logo-sub { font-size: 10px; color: #3b82f6; letter-spacing: 2px; margin-bottom: 28px; }
   .nav-btn { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid transparent; background: none; color: #64748b; cursor: pointer; font-size: 13px; font-weight: 600; width: 100%; margin-bottom: 4px; text-align: left; font-family: inherit; transition: all 0.15s; }
   .nav-btn.active { background: #3b82f611; border-color: #3b82f633; color: #3b82f6; }
-  .nav-btn:hover:not(.active) { color: #94a3b8; }
-  .user-card { margin-top: auto; background: #161b2e; border: 1px solid #1e2a42; border-radius: 12px; padding: 14px; }
+  .nav-btn:hover:not(.active) { color: #64748b; }
+  .user-card { margin-top: auto; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
 
   #main { margin-left: 200px; padding: 32px; flex: 1; }
   .page { display: none; }
@@ -23,25 +23,25 @@
   .page-sub { color: #64748b; font-size: 13px; margin-bottom: 24px; }
 
   .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-  .stat-card { background: #161b2e; border: 1px solid #1e2a42; border-radius: 16px; padding: 20px 24px; }
+  .stat-card { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px 24px; }
   .stat-card .slabel { color: #64748b; font-size: 12px; margin-bottom: 8px; }
   .stat-card .svalue { font-size: 26px; font-weight: 800; }
   .stat-card .ssub { font-size: 11px; margin-top: 6px; }
 
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  .card { background: #161b2e; border: 1px solid #1e2a42; border-radius: 16px; padding: 24px; }
+  .card { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; }
   .card-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; }
 
   .emp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
-  .emp-card { background: #161b2e; border: 1px solid #1e2a42; border-radius: 16px; padding: 20px; cursor: pointer; transition: all 0.2s; }
+  .emp-card { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; cursor: pointer; transition: all 0.2s; }
   .emp-card:hover { border-color: #3b82f644; transform: translateY(-2px); }
-  .emp-header { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+  .emp-header { display: flex; align-items: center; gap: 0; margin-bottom: 14px; }
   .avatar { border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
-  .emp-footer { border-top: 1px solid #1e2a42; padding-top: 12px; font-size: 12px; color: #64748b; line-height: 1.8; }
-  .emp-footer span { color: #94a3b8; }
+  .emp-footer { border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 12px; color: #64748b; line-height: 1.8; }
+  .emp-footer span { color: #64748b; }
 
   .search-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 12px; }
-  input, select, textarea { background: #0f1420; border: 1px solid #1e2a42; border-radius: 8px; padding: 8px 12px; color: #f1f5f9; font-size: 13px; font-family: inherit; outline: none; }
+  input, select, textarea { background: #e9eef5; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; color: #1e293b; font-size: 13px; font-family: inherit; outline: none; }
   input:focus, select:focus { border-color: #3b82f644; }
 
   .btn { border-radius: 8px; padding: 8px 16px; font-size: 12px; cursor: pointer; font-family: inherit; font-weight: 600; border: 1px solid; background: none; transition: all 0.15s; }
@@ -51,7 +51,7 @@
   .btn-danger { color: #ef4444; border-color: #ef444444; }
   .btn-gray { color: #64748b; border-color: #64748b44; }
 
-  .leave-item { background: #0f1420; border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+  .leave-item { background: #e9eef5; border-radius: 10px; padding: 14px; margin-bottom: 10px; }
   .badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
 
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
@@ -61,29 +61,29 @@
 
   .modal-bg { position: fixed; inset: 0; background: #00000088; z-index: 200; display: none; align-items: center; justify-content: center; }
   .modal-bg.open { display: flex; }
-  .modal { background: #0d1120; border: 1px solid #1e2a42; border-radius: 20px; padding: 32px; width: 460px; max-width: 90vw; max-height: 90vh; overflow-y: auto; }
+  .modal { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; padding: 32px; width: 460px; max-width: 90vw; max-height: 90vh; overflow-y: auto; }
   .modal h3 { font-size: 18px; font-weight: 800; margin-bottom: 20px; }
-  .modal-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #1e2a42; font-size: 13px; }
+  .modal-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
   .modal-row .k { color: #64748b; }
-  .modal-row .v { color: #f1f5f9; font-weight: 600; }
+  .modal-row .v { color: #1e293b; font-weight: 600; }
 
-  .att-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #1e2a4222; font-size: 13px; }
-  .org-wrap { overflow-x: auto; padding: 40px; background: #161b2e; border: 1px solid #1e2a42; border-radius: 20px; }
+  .att-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #e2e8f022; font-size: 13px; }
+  .org-wrap { overflow-x: auto; padding: 40px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 20px; }
   .org-tree { display: flex; justify-content: center; min-width: 600px; }
   .org-node { display: flex; flex-direction: column; align-items: center; }
   .org-line-v { width: 2px; height: 20px; background: #1e2a42; }
   .org-children { display: flex; gap: 16px; align-items: flex-start; }
   .org-child { display: flex; flex-direction: column; align-items: center; }
   .legend { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
-  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #94a3b8; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #64748b; }
   .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
 
   .loading { text-align: center; padding: 40px; color: #64748b; font-size: 14px; }
   .empty { text-align: center; padding: 40px; color: #64748b; font-size: 14px; }
 
   ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-track { background: #0a0e1a; }
-  ::-webkit-scrollbar-thumb { background: #1e2a42; border-radius: 4px; }
+  ::-webkit-scrollbar-track { background: #f8fafc; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 </style>
 </head>
 <body>
@@ -206,7 +206,7 @@
 <div class="modal-bg" id="emp-detail-modal" onclick="closeModal('emp-detail-modal')">
   <div class="modal" onclick="event.stopPropagation()">
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
-      <div id="detail-avatar" class="avatar" style="width:56px;height:56px;font-size:18px"></div>
+      <div id="detail-avatar" style="display:none"></div>
       <div>
         <div id="detail-name" style="font-size:20px;font-weight:900"></div>
         <div id="detail-role" style="color:#64748b;font-size:13px;margin-top:2px"></div>
@@ -294,8 +294,7 @@ function getDeptColor(dept) {
 function getInitials(name) { return (name||'??').slice(0,2); }
 
 function avatarEl(name, dept, size=40) {
-  const c = getDeptColor(dept);
-  return `<div class="avatar" style="width:${size}px;height:${size}px;font-size:${Math.round(size*0.3)}px;background:${c}22;border:2px solid ${c}44;color:${c}">${getInitials(name)}</div>`;
+  return '';
 }
 
 function showPage(id, btn) {
@@ -337,7 +336,7 @@ async function renderDashboard() {
       <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
         <span style="color:#94a3b8">${dept}</span><span style="color:${c};font-weight:700">${count}명</span>
       </div>
-      <div style="height:6px;background:#0f1420;border-radius:3px;overflow:hidden">
+      <div style="height:6px;background:#e9eef5;border-radius:3px;overflow:hidden">
         <div style="height:100%;width:${pct}%;background:${c};border-radius:3px"></div>
       </div>
     </div>`;
@@ -393,8 +392,8 @@ function openEmpDetail(id) {
   const emp = allEmployees.find(e=>e.id===id); if(!emp) return;
   const c = getDeptColor(emp.dept);
   const av = document.getElementById('detail-avatar');
-  av.textContent = getInitials(emp.name);
-  av.style.cssText=`width:56px;height:56px;font-size:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;background:${c}22;border:2px solid ${c}44;color:${c}`;
+  av.textContent = '';
+  av.style.cssText='display:none';
   document.getElementById('detail-name').textContent=emp.name;
   document.getElementById('detail-role').textContent=emp.role||'-';
   document.getElementById('detail-dept').innerHTML=`<span style="color:${c}">${emp.dept||'-'}</span>`;
@@ -510,7 +509,7 @@ async function renderOrg() {
   const c0=getDeptColor(ceo.dept);
   document.getElementById('org-tree').innerHTML=`
   <div class="org-node">
-    <div style="background:#0d1120;border:2px solid ${c0}55;border-radius:14px;padding:14px 20px;text-align:center;box-shadow:0 0 20px ${c0}20">
+    <div style="background:#ffffff;border:2px solid ${c0}55;border-radius:14px;padding:14px 20px;text-align:center;box-shadow:0 0 20px ${c0}20">
       ${avatarEl(ceo.name,ceo.dept,44)}
       <div style="font-size:15px;font-weight:800;margin-top:8px">${ceo.name}</div>
       <div style="font-size:12px;color:#64748b;margin-top:2px">${ceo.role}</div>
@@ -522,13 +521,13 @@ async function renderOrg() {
         const c=getDeptColor(dept);
         return `<div class="org-child">
           <div class="org-line-v"></div>
-          <div style="background:#0d1120;border:1.5px solid ${c}55;border-radius:10px;padding:10px 14px;text-align:center;min-width:110px;margin-bottom:8px;box-shadow:0 0 12px ${c}15">
+          <div style="background:#ffffff;border:1.5px solid ${c}55;border-radius:10px;padding:10px 14px;text-align:center;min-width:110px;margin-bottom:8px;box-shadow:0 0 12px ${c}15">
             <div style="font-size:12px;font-weight:700;color:${c}">${dept}</div>
             <div style="font-size:11px;color:#64748b;margin-top:2px">${emps.length}명</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
             ${emps.map(e=>`
-              <div style="background:#0a0e1a;border:1px solid ${c}33;border-radius:8px;padding:7px 12px;text-align:center;min-width:100px">
+              <div style="background:#f8fafc;border:1px solid ${c}33;border-radius:8px;padding:7px 12px;text-align:center;min-width:100px">
                 <div style="font-size:12px;font-weight:700">${e.name}</div>
                 <div style="font-size:10px;color:#64748b;margin-top:1px">${e.role||''}</div>
               </div>`).join('')}
