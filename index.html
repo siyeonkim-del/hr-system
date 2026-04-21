@@ -634,38 +634,39 @@ async function saveEmployee() {
 
 
 // 연차 계산 함수
-// 규칙: 1년 미만 - 매월 1개 (최대 11개), 1년 이상 - 15개, 3년차부터 2년마다 +1개
+// 규칙: 1년 미만 매월 1개(최대 11개) + 1년 초과시 15개 추가 + 3년차부터 2년마다 1개 추가
 function calcAnnualLeave(joinDateStr) {
   if(!joinDateStr) return 15;
   const join = new Date(joinDateStr);
   const today = new Date();
   today.setHours(0,0,0,0);
 
-  // 근속 개월 수
-  const totalMonths = (today.getFullYear() - join.getFullYear()) * 12 + (today.getMonth() - join.getMonth());
-  // 근속 연수 (정확히 1년이 된 날 기준)
   const oneYearDate = new Date(join);
   oneYearDate.setFullYear(oneYearDate.getFullYear() + 1);
 
+  // 1년 미만 연차: 매월 1개, 최대 11개
+  let monthlyLeave = 0;
+  for(let m = 1; m <= 11; m++) {
+    const earnDate = new Date(join);
+    earnDate.setMonth(earnDate.getMonth() + m);
+    if(today >= earnDate) monthlyLeave++;
+  }
+  monthlyLeave = Math.min(monthlyLeave, 11);
+
   if(today < oneYearDate) {
-    // 1년 미만: 입사 다음달부터 매월 1개, 최대 11개
-    // 입사 후 1개월이 지난 날(입사일+1달) 첫 번째 연차 발생
-    let count = 0;
-    for(let m = 1; m <= 11; m++) {
-      const earnDate = new Date(join);
-      earnDate.setMonth(earnDate.getMonth() + m);
-      if(today >= earnDate) count++;
-    }
-    return Math.min(count, 11);
+    // 1년 미만: 월별 연차만
+    return monthlyLeave;
   } else {
-    // 1년 이상: 기본 15개 + 3년차부터 2년마다 1개 추가
+    // 1년 이상: 월별 11개 + 매년 15개 + 3년차부터 2년마다 1개 추가
     const years = today.getFullYear() - join.getFullYear() -
-      ((today.getMonth() < join.getMonth() || (today.getMonth() === join.getMonth() && today.getDate() < join.getDate())) ? 1 : 0);
+      ((today.getMonth() < join.getMonth() ||
+       (today.getMonth() === join.getMonth() && today.getDate() < join.getDate())) ? 1 : 0);
     let extra = 0;
     if(years >= 3) {
-      extra = Math.floor((years - 1) / 2);
+      extra = Math.floor((years - 3) / 2) + 1;
     }
-    return Math.min(15 + extra, 25); // 최대 25일 (법정 한도)
+    const annualLeave = Math.min(15 + extra, 25);
+    return 11 + annualLeave;
   }
 }
 
