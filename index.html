@@ -1022,6 +1022,16 @@ async function submitMyLeave() {
   const reason = document.getElementById('my-lv-reason').value;
   if(!from_date||!to_date) return alert('시작일과 종료일을 입력해주세요.');
 
+  // 보건휴가 월 1일 제한 체크
+  if(cat==='기타휴가' && subVal==='보건휴가') {
+    const fromMonth = from_date.slice(0,7); // YYYY-MM
+    const existing = await api(`leave_requests?employee_id=eq.${currentEmp.id}&type=eq.기타휴가 - 보건휴가&status=neq.취소`);
+    const usedThisMonth = (existing||[]).filter(l=>l.from_date&&l.from_date.startsWith(fromMonth));
+    if(usedThisMonth.length > 0) {
+      return alert(`${fromMonth.replace('-','년 ')}월에 이미 보건휴가를 사용했어요. 보건휴가는 월 1일만 사용 가능합니다.`);
+    }
+  }
+
   // 차감 일수 계산
   let days = 0;
   if(cat==='연차') {
