@@ -17,8 +17,8 @@
   .nav-btn:hover:not(.active) { color: #64748b; }
   .user-card { margin-top: auto; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
 
-  #main { margin-left: 200px; padding: 32px; flex: 1; }
-  .page { display: none; }
+  #main { margin-left: 200px; padding: 32px; flex: 1; width: calc(100% - 200px); }
+  .page { display: none; width: 100%; }
   .page.active { display: block; }
   .page-title { font-size: 24px; font-weight: 900; margin-bottom: 6px; }
   .page-sub { color: #64748b; font-size: 13px; margin-bottom: 24px; }
@@ -1575,7 +1575,7 @@ initApp();
   <div id="page-holidays" class="page">
     <div class="page-title">공휴일 관리</div>
     <div class="page-sub">공휴일을 등록하면 연차 신청 시 자동으로 제외됩니다</div>
-    <div style="display:flex;gap:20px;align-items:flex-start">
+    <div style="display:flex;gap:20px;align-items:flex-start;width:100%">
       <div class="card" style="width:280px;flex-shrink:0">
         <div class="card-title">공휴일 등록</div>
         <div style="margin-bottom:10px">
