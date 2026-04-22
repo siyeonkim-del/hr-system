@@ -123,6 +123,8 @@
     <div style="font-size:10px;color:#3b82f6;letter-spacing:2px;margin-bottom:28px">PEOPLE PLATFORM</div>
     <button class="nav-btn active" id="etab-my-info" onclick="showEmpTab('my-info',this)">내 정보</button>
     <button class="nav-btn" id="etab-my-leave" onclick="showEmpTab('my-leave',this)">휴가 신청</button>
+    <button class="nav-btn" id="etab-peer-eval" onclick="showEmpTab('peer-eval',this)">상호평가</button>
+    <button class="nav-btn" id="etab-leader-eval" onclick="showEmpTab('leader-eval',this)">리더평가</button>
     <button class="nav-btn" id="etab-org" onclick="showEmpTab('org',this)">조직도</button>
     <div style="margin-top:auto;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:12px;padding:14px">
       <div style="font-size:11px;color:#64748b">로그인 중</div>
@@ -189,6 +191,20 @@
       </div>
     </div>
 
+    <!-- 상호평가 -->
+    <div id="emp-tab-peer-eval" class="emp-tab" style="display:none">
+      <div style="font-size:24px;font-weight:900;margin-bottom:6px">상호평가 (동료 칭찬제)</div>
+      <div style="color:#64748b;font-size:13px;margin-bottom:24px">함께 일하며 긍정적인 영향을 준 동료를 선택해주세요</div>
+      <div id="peer-eval-content"><div class="loading">로딩 중...</div></div>
+    </div>
+
+    <!-- 리더평가 -->
+    <div id="emp-tab-leader-eval" class="emp-tab" style="display:none">
+      <div style="font-size:24px;font-weight:900;margin-bottom:6px">리더평가</div>
+      <div style="color:#64748b;font-size:13px;margin-bottom:24px">팀원의 역량을 평가해주세요</div>
+      <div id="leader-eval-content"><div class="loading">로딩 중...</div></div>
+    </div>
+
     <!-- 조직도 -->
     <div id="emp-tab-org" class="emp-tab" style="display:none">
       <div style="font-size:24px;font-weight:900;margin-bottom:6px">조직도</div>
@@ -209,6 +225,7 @@
   <button class="nav-btn" onclick="showPage('employees',this)">직원 관리</button>
   <button class="nav-btn" onclick="showPage('leave',this)">휴가·근태</button>
   <button class="nav-btn" onclick="showPage('holidays',this)">공휴일 관리</button>
+  <button class="nav-btn" onclick="showPage('evaluation',this)">인사평가</button>
   <button class="nav-btn" onclick="showPage('org',this)">조직도</button>
   <div class="user-card">
     <div style="font-size:11px;color:#64748b">관리자</div>
@@ -427,6 +444,7 @@ function showPage(id, btn) {
   if(id==='leave') renderLeave();
   if(id==='org') renderOrg();
   if(id==='holidays') renderHolidays();
+  if(id==='evaluation') { showEvalTab('periods'); }
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
@@ -909,6 +927,8 @@ function showEmpTab(id, btn) {
   if(tabBtn) tabBtn.classList.add('active');
   if(id==='my-info') renderMyInfo();
   if(id==='my-leave') renderMyLeave();
+  if(id==='peer-eval') renderPeerEval();
+  if(id==='leader-eval') renderLeaderEval();
   if(id==='org') renderEmpOrg();
 }
 
@@ -1193,6 +1213,348 @@ function calcWorkingDays(from_date, to_date) {
   return count;
 }
 
+// ── 인사평가 (관리자) ──
+let evalPeriods = [];
+
+function showEvalTab(id) {
+  ['periods','peer-results','leader-results'].forEach(t => {
+    document.getElementById('eval-tab-'+t).style.display = t===id ? 'block' : 'none';
+    const btn = document.getElementById('evtab-'+t);
+    if(btn) {
+      btn.style.color = t===id ? '#3b82f6' : '#64748b';
+      btn.style.borderBottom = t===id ? '2px solid #3b82f6' : 'none';
+      btn.style.fontWeight = t===id ? '700' : '600';
+    }
+  });
+  if(id==='periods') renderPeriods();
+  if(id==='peer-results') { loadPeriodsForFilter('peer'); renderPeerResults(); }
+  if(id==='leader-results') { loadPeriodsForFilter('leader'); renderLeaderResults(); }
+}
+
+async function renderPeriods() {
+  evalPeriods = await api('evaluation_periods?select=*&order=created_at.desc') || [];
+  document.getElementById('period-list').innerHTML = evalPeriods.length ? evalPeriods.map(p => {
+    const typeLabel = p.type === 'peer' ? '상호평가' : '리더평가';
+    const typeColor = p.type === 'peer' ? '#8b5cf6' : '#3b82f6';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid #f1f5f9">
+      <div>
+        <div style="font-weight:700;font-size:14px">${p.title}</div>
+        <div style="font-size:12px;color:#64748b;margin-top:3px">
+          <span style="background:${typeColor}15;color:${typeColor};padding:2px 8px;border-radius:10px;font-weight:600;font-size:11px">${typeLabel}</span>
+          <span style="margin-left:8px">${p.start_date||''} ~ ${p.end_date||''}</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;background:${p.is_open?'#10b98115':'#64748b15'};color:${p.is_open?'#10b981':'#64748b'}">${p.is_open?'진행 중':'종료'}</span>
+        <button onclick="togglePeriod('${p.id}',${p.is_open})" class="btn" style="color:${p.is_open?'#f59e0b':'#10b981'};border-color:${p.is_open?'#f59e0b44':'#10b98144'};font-size:11px;padding:4px 10px">${p.is_open?'종료':'재개'}</button>
+        <button onclick="deletePeriod('${p.id}')" class="btn btn-danger" style="font-size:11px;padding:4px 10px">삭제</button>
+      </div>
+    </div>`;
+  }).join('') : '<div class="empty">생성된 평가 기간이 없어요</div>';
+}
+
+async function createPeriod() {
+  const title = document.getElementById('ep-title').value.trim();
+  const type = document.getElementById('ep-type').value;
+  const start_date = document.getElementById('ep-start').value;
+  const end_date = document.getElementById('ep-end').value;
+  if(!title) return alert('평가 제목을 입력해주세요.');
+  await api('evaluation_periods','POST',{title,type,start_date:start_date||null,end_date:end_date||null,is_open:true});
+  document.getElementById('ep-title').value='';
+  renderPeriods();
+  alert('평가 기간이 생성되었습니다!');
+}
+
+async function togglePeriod(id, isOpen) {
+  await api(`evaluation_periods?id=eq.${id}`,'PATCH',{is_open:!isOpen});
+  renderPeriods();
+}
+
+async function deletePeriod(id) {
+  if(!confirm('삭제하시겠어요? 관련 평가 데이터도 함께 삭제됩니다.')) return;
+  await api(`peer_evaluations?period_id=eq.${id}`,'DELETE');
+  await api(`leader_evaluations?period_id=eq.${id}`,'DELETE');
+  await api(`evaluation_periods?id=eq.${id}`,'DELETE');
+  renderPeriods();
+}
+
+async function loadPeriodsForFilter(type) {
+  const periods = await api(`evaluation_periods?type=eq.${type}&order=created_at.desc`) || [];
+  const filterId = type==='peer' ? 'peer-period-filter' : 'leader-period-filter';
+  document.getElementById(filterId).innerHTML = '<option value="">평가 기간 선택</option>' +
+    periods.map(p=>`<option value="${p.id}">${p.title} (${p.is_open?'진행중':'종료'})</option>`).join('');
+}
+
+async function renderPeerResults() {
+  const periodId = document.getElementById('peer-period-filter').value;
+  if(!periodId) { document.getElementById('peer-results-content').innerHTML='<div class="empty">평가 기간을 선택해주세요</div>'; return; }
+  const results = await api(`peer_evaluations?period_id=eq.${periodId}&order=created_at.desc`) || [];
+  if(!results.length) { document.getElementById('peer-results-content').innerHTML='<div class="empty">제출된 평가가 없어요</div>'; return; }
+
+  // 대상자별 그룹핑
+  const grouped = {};
+  results.forEach(r => {
+    if(!grouped[r.target_name]) grouped[r.target_name] = [];
+    grouped[r.target_name].push(r);
+  });
+
+  document.getElementById('peer-results-content').innerHTML = Object.entries(grouped).map(([name, evals])=>`
+    <div style="margin-bottom:20px;padding:16px;background:#f8fafc;border-radius:12px">
+      <div style="font-weight:800;font-size:15px;margin-bottom:12px">🏅 ${name}</div>
+      ${evals.map(e=>`
+        <div style="padding:10px 14px;background:white;border-radius:8px;margin-bottom:8px;border:1px solid #e2e8f0">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <span style="font-size:12px;color:#64748b">평가자: <b>${e.evaluator_name}</b></span>
+            <span style="font-size:11px;background:#8b5cf615;color:#8b5cf6;padding:2px 8px;border-radius:10px;font-weight:600">${e.category}</span>
+          </div>
+          <div style="font-size:13px;color:#1e293b">${e.reason||'-'}</div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+async function renderLeaderResults() {
+  const periodId = document.getElementById('leader-period-filter').value;
+  if(!periodId) { document.getElementById('leader-results-content').innerHTML='<div class="empty">평가 기간을 선택해주세요</div>'; return; }
+  const results = await api(`leader_evaluations?period_id=eq.${periodId}&order=created_at.desc`) || [];
+  if(!results.length) { document.getElementById('leader-results-content').innerHTML='<div class="empty">제출된 평가가 없어요</div>'; return; }
+
+  const scoreLabels = {score_performance:'업무 성과',score_responsibility:'책임감',score_collaboration:'협업/커뮤니케이션',score_growth:'자기 계발',score_attitude:'근무 태도'};
+
+  document.getElementById('leader-results-content').innerHTML = results.map(r=>`
+    <div style="margin-bottom:20px;padding:20px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0">
+      <div style="display:flex;justify-content:space-between;margin-bottom:16px">
+        <div>
+          <div style="font-weight:800;font-size:15px">대상자: ${r.target_name}</div>
+          <div style="font-size:12px;color:#64748b;margin-top:2px">평가자: ${r.evaluator_name}</div>
+        </div>
+        <div style="font-size:22px;font-weight:900;color:#3b82f6">
+          ${Math.round(([r.score_performance,r.score_responsibility,r.score_collaboration,r.score_growth,r.score_attitude].filter(Boolean).reduce((a,b)=>a+b,0)/5*10)/10)}점
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px">
+        ${Object.entries(scoreLabels).map(([key,label])=>`
+          <div style="text-align:center;padding:10px;background:white;border-radius:8px;border:1px solid #e2e8f0">
+            <div style="font-size:20px;font-weight:900;color:#3b82f6">${r[key]||'-'}</div>
+            <div style="font-size:10px;color:#64748b;margin-top:4px">${label}</div>
+          </div>`).join('')}
+      </div>
+      ${r.strength ? `<div style="font-size:12px;margin-bottom:6px"><b style="color:#64748b">강점:</b> ${r.strength}</div>` : ''}
+      ${r.improvement ? `<div style="font-size:12px"><b style="color:#64748b">개선점:</b> ${r.improvement}</div>` : ''}
+    </div>`).join('');
+}
+
+// ── 인사평가 (직원) ──
+async function renderPeerEval() {
+  if(!currentEmp) return;
+  const periods = await api('evaluation_periods?type=eq.peer&is_open=eq.true&order=created_at.desc') || [];
+
+  if(!periods.length) {
+    document.getElementById('peer-eval-content').innerHTML = '<div class="empty">현재 진행 중인 상호평가가 없어요</div>';
+    return;
+  }
+
+  const period = periods[0];
+  // 이미 제출했는지 확인
+  const submitted = await api(`peer_evaluations?period_id=eq.${period.id}&evaluator_id=eq.${currentEmp.id}`) || [];
+  const submittedTargets = submitted.map(s=>s.target_id);
+
+  const otherEmps = allEmployees.filter(e=>e.id !== currentEmp.id);
+  const categories = ['책임감','업무성과','협업/커뮤니케이션','문제해결','조직문화 기여'];
+
+  document.getElementById('peer-eval-content').innerHTML = `
+    <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:16px;margin-bottom:20px">
+      <div style="font-weight:700;color:#0369a1">${period.title}</div>
+      <div style="font-size:12px;color:#0284c7;margin-top:4px">${period.start_date||''} ~ ${period.end_date||''}</div>
+    </div>
+    <div style="color:#64748b;font-size:13px;margin-bottom:16px">이번 분기 동안 긍정적인 영향을 준 동료를 최대 2명 선택해주세요.</div>
+    ${submitted.length >= 2 ? '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;color:#16a34a;font-weight:600">✅ 이미 제출하셨습니다! 감사합니다 😊</div>' : `
+    <div id="peer-form">
+      ${[1,2].map(n => `
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:16px">
+          <div style="font-weight:700;margin-bottom:12px">${n}번째 동료</div>
+          <div style="margin-bottom:10px">
+            <div style="font-size:12px;color:#64748b;margin-bottom:4px">동료 선택</div>
+            <select id="peer-target-${n}" style="width:100%">
+              <option value="">선택해주세요</option>
+              ${otherEmps.map(e=>`<option value="${e.id}" data-name="${e.name}">${e.name} (${e.dept} · ${e.role})</option>`).join('')}
+            </select>
+          </div>
+          <div style="margin-bottom:10px">
+            <div style="font-size:12px;color:#64748b;margin-bottom:4px">카테고리 선택</div>
+            <select id="peer-category-${n}" style="width:100%">
+              <option value="">선택해주세요</option>
+              ${categories.map(c=>`<option value="${c}">${c}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <div style="font-size:12px;color:#64748b;margin-bottom:4px">선택 이유 (자유 서술)</div>
+            <textarea id="peer-reason-${n}" placeholder="구체적인 행동 중심으로 작성해주세요" style="width:100%;height:80px;resize:vertical;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none"></textarea>
+          </div>
+        </div>`).join('')}
+      <button class="btn btn-primary" style="width:100%;padding:12px" onclick="submitPeerEval('${period.id}')">제출하기</button>
+    </div>`}`;
+}
+
+async function submitPeerEval(periodId) {
+  if(!currentEmp) return;
+  const submissions = [];
+  for(let n=1; n<=2; n++) {
+    const targetSel = document.getElementById(`peer-target-${n}`);
+    const targetId = targetSel.value;
+    const targetName = targetSel.options[targetSel.selectedIndex]?.dataset?.name || '';
+    const category = document.getElementById(`peer-category-${n}`).value;
+    const reason = document.getElementById(`peer-reason-${n}`).value.trim();
+    if(targetId && category) {
+      submissions.push({period_id:periodId,evaluator_id:currentEmp.id,evaluator_name:currentEmp.name,target_id:targetId,target_name:targetName,category,reason});
+    }
+  }
+  if(!submissions.length) return alert('최소 1명의 동료를 선택해주세요.');
+  for(const s of submissions) await api('peer_evaluations','POST',s);
+  alert('상호평가가 제출되었습니다! 감사합니다 😊');
+  renderPeerEval();
+}
+
+async function renderLeaderEval() {
+  if(!currentEmp) return;
+  const periods = await api('evaluation_periods?type=eq.leader&is_open=eq.true&order=created_at.desc') || [];
+
+  if(!periods.length) {
+    document.getElementById('leader-eval-content').innerHTML = '<div class="empty">현재 진행 중인 리더평가가 없어요</div>';
+    return;
+  }
+
+  const period = periods[0];
+  const submitted = await api(`leader_evaluations?period_id=eq.${period.id}&evaluator_id=eq.${currentEmp.id}`) || [];
+  const submittedTargetIds = submitted.map(s=>s.target_id);
+  const otherEmps = allEmployees.filter(e=>e.id !== currentEmp.id);
+  const scoreItems = [
+    {key:'score_performance',label:'업무 성과',desc:'업무 목표를 명확히 이해하고 성과를 달성한다'},
+    {key:'score_responsibility',label:'책임감',desc:'주어진 업무를 끝까지 수행하며 일정을 준수한다'},
+    {key:'score_collaboration',label:'협업/커뮤니케이션',desc:'팀 내 협업 및 소통이 원활하다'},
+    {key:'score_growth',label:'자기 계발',desc:'새로운 지식이나 기술을 스스로 학습한다'},
+    {key:'score_attitude',label:'근무 태도',desc:'조직 목표를 위해 성실히 임하며 긍정적 영향을 준다'},
+  ];
+
+  document.getElementById('leader-eval-content').innerHTML = `
+    <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:16px;margin-bottom:20px">
+      <div style="font-weight:700;color:#0369a1">${period.title}</div>
+      <div style="font-size:12px;color:#0284c7;margin-top:4px">${period.start_date||''} ~ ${period.end_date||''}</div>
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;color:#64748b;margin-bottom:4px;font-weight:600">평가 대상자 선택</div>
+      <select id="leader-target" style="width:100%;max-width:300px" onchange="renderLeaderForm('${period.id}')">
+        <option value="">선택해주세요</option>
+        ${otherEmps.map(e=>`<option value="${e.id}" data-name="${e.name}" ${submittedTargetIds.includes(e.id)?'disabled':''}>
+          ${e.name} (${e.dept}) ${submittedTargetIds.includes(e.id)?'✅ 완료':''}
+        </option>`).join('')}
+      </select>
+    </div>
+    <div id="leader-form-area"></div>`;
+}
+
+function renderLeaderForm(periodId) {
+  const targetSel = document.getElementById('leader-target');
+  const targetId = targetSel.value;
+  const targetName = targetSel.options[targetSel.selectedIndex]?.dataset?.name || '';
+  if(!targetId) { document.getElementById('leader-form-area').innerHTML=''; return; }
+
+  const scoreItems = [
+    {key:'score_performance',label:'업무 성과',desc:'업무 목표를 명확히 이해하고 성과를 달성한다'},
+    {key:'score_responsibility',label:'책임감',desc:'주어진 업무를 끝까지 수행하며 일정을 준수한다'},
+    {key:'score_collaboration',label:'협업/커뮤니케이션',desc:'팀 내 협업 및 소통이 원활하다'},
+    {key:'score_growth',label:'자기 계발',desc:'새로운 지식이나 기술을 스스로 학습한다'},
+    {key:'score_attitude',label:'근무 태도',desc:'조직 목표를 위해 성실히 임하며 긍정적 영향을 준다'},
+  ];
+
+  document.getElementById('leader-form-area').innerHTML = `
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:16px">
+      <div style="font-weight:700;font-size:15px;margin-bottom:4px">${targetName} 평가</div>
+      <div style="font-size:12px;color:#64748b;margin-bottom:20px">절대평가: 각 항목을 1~5점으로 평가해주세요</div>
+      ${scoreItems.map(item=>`
+        <div style="margin-bottom:16px;padding:14px;background:#f8fafc;border-radius:10px">
+          <div style="font-weight:700;margin-bottom:4px">${item.label}</div>
+          <div style="font-size:12px;color:#64748b;margin-bottom:10px">${item.desc}</div>
+          <div style="display:flex;gap:8px">
+            ${[1,2,3,4,5].map(s=>`
+              <label style="flex:1;text-align:center">
+                <input type="radio" name="${item.key}" value="${s}" style="display:none">
+                <div class="score-btn" data-key="${item.key}" data-val="${s}" onclick="selectScore('${item.key}',${s})" style="padding:10px;border:2px solid #e2e8f0;border-radius:8px;cursor:pointer;font-weight:700;font-size:16px;transition:all 0.15s">${s}</div>
+              </label>`).join('')}
+          </div>
+        </div>`).join('')}
+
+      <div style="margin-top:20px;font-weight:700;margin-bottom:12px">상대평가</div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:12px;color:#64748b;margin-bottom:4px">팀 내 전반적 기여도</div>
+        <select id="ldr-contribution" style="width:100%">
+          <option value="">선택해주세요</option>
+          <option value="상위 10%">상위 10%</option>
+          <option value="상위 25%">상위 25%</option>
+          <option value="중위권">중위권</option>
+          <option value="하위 25%">하위 25%</option>
+          <option value="하위 10%">하위 10%</option>
+        </select>
+      </div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:12px;color:#64748b;margin-bottom:4px">가장 두드러지는 강점</div>
+        <textarea id="ldr-strength" placeholder="서술형으로 작성해주세요" style="width:100%;height:70px;resize:vertical;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none"></textarea>
+      </div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:12px;color:#64748b;margin-bottom:4px">향후 성장 가능성</div>
+        <select id="ldr-growth-potential" style="width:100%">
+          <option value="">선택해주세요</option>
+          <option value="매우 높음">매우 높음</option>
+          <option value="높음">높음</option>
+          <option value="보통">보통</option>
+          <option value="낮음">낮음</option>
+        </select>
+      </div>
+      <div style="margin-bottom:16px">
+        <div style="font-size:12px;color:#64748b;margin-bottom:4px">개선이 필요한 부분</div>
+        <textarea id="ldr-improvement" placeholder="서술형으로 작성해주세요" style="width:100%;height:70px;resize:vertical;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none"></textarea>
+      </div>
+      <button class="btn btn-primary" style="width:100%;padding:12px" onclick="submitLeaderEval('${periodId}','${targetId}','${targetName}')">평가 제출하기</button>
+    </div>`;
+}
+
+function selectScore(key, val) {
+  document.querySelectorAll(`[data-key="${key}"]`).forEach(el => {
+    el.style.background = 'white';
+    el.style.borderColor = '#e2e8f0';
+    el.style.color = '#1e293b';
+  });
+  const el = document.querySelector(`[data-key="${key}"][data-val="${val}"]`);
+  if(el) { el.style.background='#3b82f6'; el.style.borderColor='#3b82f6'; el.style.color='white'; }
+}
+
+async function submitLeaderEval(periodId, targetId, targetName) {
+  if(!currentEmp) return;
+  const getScore = key => {
+    const el = document.querySelector(`[data-key="${key}"][style*="background: rgb(59, 130, 246)"], [data-key="${key}"][style*="background:rgb(59, 130, 246)"], [data-key="${key}"][style*="background: #3b82f6"]`);
+    return el ? parseInt(el.dataset.val) : null;
+  };
+  const scores = {
+    score_performance: getScore('score_performance'),
+    score_responsibility: getScore('score_responsibility'),
+    score_collaboration: getScore('score_collaboration'),
+    score_growth: getScore('score_growth'),
+    score_attitude: getScore('score_attitude'),
+  };
+  if(Object.values(scores).some(s=>!s)) return alert('모든 절대평가 항목을 입력해주세요.');
+  const contribution = document.getElementById('ldr-contribution').value;
+  const strength = document.getElementById('ldr-strength').value.trim();
+  const growth_potential = document.getElementById('ldr-growth-potential').value;
+  const improvement = document.getElementById('ldr-improvement').value.trim();
+
+  await api('leader_evaluations','POST',{
+    period_id:periodId, evaluator_id:currentEmp.id, evaluator_name:currentEmp.name,
+    target_id:targetId, target_name:targetName,
+    ...scores, contribution, strength, growth_potential, improvement
+  });
+  alert(`${targetName}님 평가가 제출되었습니다!`);
+  renderLeaderEval();
+}
+
 // 초기 실행
 initApp();
 </script>
@@ -1229,6 +1591,80 @@ initApp();
       <div class="card" style="flex:1">
         <div class="card-title">등록된 공휴일</div>
         <div id="holiday-list"><div class="loading">로딩 중...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 인사평가 관리 -->
+  <div id="page-evaluation" class="page">
+    <div class="page-title">인사평가 관리</div>
+    <div class="page-sub">평가 기간을 생성하고 결과를 확인하세요</div>
+
+    <!-- 탭 -->
+    <div style="display:flex;gap:8px;margin-bottom:24px;border-bottom:2px solid #e2e8f0;padding-bottom:0">
+      <button id="evtab-periods" onclick="showEvalTab('periods')" style="padding:10px 20px;border:none;background:none;font-size:14px;font-weight:700;color:#3b82f6;border-bottom:2px solid #3b82f6;margin-bottom:-2px;cursor:pointer;font-family:inherit">평가 기간 관리</button>
+      <button id="evtab-peer-results" onclick="showEvalTab('peer-results')" style="padding:10px 20px;border:none;background:none;font-size:14px;font-weight:600;color:#64748b;cursor:pointer;font-family:inherit">상호평가 결과</button>
+      <button id="evtab-leader-results" onclick="showEvalTab('leader-results')" style="padding:10px 20px;border:none;background:none;font-size:14px;font-weight:600;color:#64748b;cursor:pointer;font-family:inherit">리더평가 결과</button>
+    </div>
+
+    <!-- 평가 기간 관리 -->
+    <div id="eval-tab-periods">
+      <div style="display:flex;gap:20px;align-items:flex-start">
+        <div class="card" style="width:300px;flex-shrink:0">
+          <div class="card-title">새 평가 기간 생성</div>
+          <div style="margin-bottom:10px">
+            <div style="font-size:12px;color:#64748b;margin-bottom:4px">평가 제목</div>
+            <input type="text" id="ep-title" placeholder="예: 2026년 1분기 평가" style="width:100%">
+          </div>
+          <div style="margin-bottom:10px">
+            <div style="font-size:12px;color:#64748b;margin-bottom:4px">평가 종류</div>
+            <select id="ep-type" style="width:100%">
+              <option value="peer">상호평가 (동료 칭찬제)</option>
+              <option value="leader">리더평가</option>
+            </select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+            <div>
+              <div style="font-size:12px;color:#64748b;margin-bottom:4px">시작일</div>
+              <input type="date" id="ep-start" style="width:100%">
+            </div>
+            <div>
+              <div style="font-size:12px;color:#64748b;margin-bottom:4px">종료일</div>
+              <input type="date" id="ep-end" style="width:100%">
+            </div>
+          </div>
+          <button class="btn btn-primary" style="width:100%" onclick="createPeriod()">생성하기</button>
+        </div>
+        <div class="card" style="flex:1">
+          <div class="card-title">평가 기간 목록</div>
+          <div id="period-list"><div class="loading">로딩 중...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 상호평가 결과 -->
+    <div id="eval-tab-peer-results" style="display:none">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div class="card-title" style="margin-bottom:0">상호평가 결과</div>
+          <select id="peer-period-filter" style="width:220px" onchange="renderPeerResults()">
+            <option value="">평가 기간 선택</option>
+          </select>
+        </div>
+        <div id="peer-results-content"><div class="empty">평가 기간을 선택해주세요</div></div>
+      </div>
+    </div>
+
+    <!-- 리더평가 결과 -->
+    <div id="eval-tab-leader-results" style="display:none">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div class="card-title" style="margin-bottom:0">리더평가 결과</div>
+          <select id="leader-period-filter" style="width:220px" onchange="renderLeaderResults()">
+            <option value="">평가 기간 선택</option>
+          </select>
+        </div>
+        <div id="leader-results-content"><div class="empty">평가 기간을 선택해주세요</div></div>
       </div>
     </div>
   </div>
