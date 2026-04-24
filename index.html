@@ -17,7 +17,7 @@
   .nav-btn:hover:not(.active) { color: #64748b; }
   .user-card { margin-top: auto; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
 
-  #main { margin-left: 200px; padding: 32px; flex: 1; width: calc(100% - 200px); }
+  #main { margin-left: 200px; padding: 32px; width: calc(100% - 200px); min-height: 100vh; }
   .page { display: none; width: 100%; }
   .page.active { display: block; }
   .page-title { font-size: 24px; font-weight: 900; margin-bottom: 6px; }
@@ -226,7 +226,7 @@
   </div>
 </div>
 
-<div id="admin-page" style="display:none;width:100%">
+<div id="admin-page" style="display:none;width:100%;min-height:100vh">
 <div id="sidebar">
   <div class="logo" onclick="showPage('dashboard',null)" style="cursor:pointer">ZENITH HR</div>
   <div class="logo-sub" onclick="showPage('dashboard',null)" style="cursor:pointer">PEOPLE PLATFORM</div>
@@ -1244,8 +1244,11 @@ function showEvalTab(id) {
 async function renderPeriods() {
   evalPeriods = await api('evaluation_periods?select=*&order=created_at.desc') || [];
   document.getElementById('period-list').innerHTML = evalPeriods.length ? evalPeriods.map(p => {
-    const typeLabel = p.type === 'peer' ? '상호평가' : '리더평가';
-    const typeColor = p.type === 'peer' ? '#8b5cf6' : '#3b82f6';
+    const typeMap = { peer:'상호평가', leader:'리더평가', probation:'수습사원 평가' };
+    const colorMap = { peer:'#8b5cf6', leader:'#3b82f6', probation:'#f59e0b' };
+    const typeLabel = typeMap[p.type] || p.type;
+    const typeColor = colorMap[p.type] || '#64748b';
+    const showAssign = p.type === 'leader' || p.type === 'probation';
     return `<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid #f1f5f9">
       <div>
         <div style="font-weight:700;font-size:14px">${p.title}</div>
@@ -1256,11 +1259,108 @@ async function renderPeriods() {
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <span style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;background:${p.is_open?'#10b98115':'#64748b15'};color:${p.is_open?'#10b981':'#64748b'}">${p.is_open?'진행 중':'종료'}</span>
-        <button onclick="togglePeriod('${p.id}',${p.is_open})" class="btn" style="color:${p.is_open?'#f59e0b':'#10b981'};border-color:${p.is_open?'#f59e0b44':'#10b98144'};font-size:11px;padding:4px 10px">${p.is_open?'종료':'재개'}</button>
+        ${showAssign ? `<button onclick="openAssign('${p.id}','${p.type}','${p.title}')" class="btn btn-primary" style="font-size:11px;padding:4px 10px">대상자 지정</button>` : ''}
+        <button onclick="togglePeriod('${p.id}',${p.is_open})" class="btn" style="color:${p.is_open?'#f59e0b':'#10b981'};border-color:${p.is_open?'#f59e0b44':'#10b98144'};font-size:11px;padding:4px 10px">${p.is_open?'종료','재개'}</button>
         <button onclick="deletePeriod('${p.id}')" class="btn btn-danger" style="font-size:11px;padding:4px 10px">삭제</button>
       </div>
     </div>`;
   }).join('') : '<div class="empty">생성된 평가 기간이 없어요</div>';
+}
+
+function closeAssign() {
+  document.getElementById('assign-section').style.display = 'none';
+}
+
+async function openAssign(periodId, type, title) {
+  document.getElementById('assign-section').style.display = 'block';
+  document.getElementById('assign-title').textContent = `[${title}] 대상자 및 평가자 지정`;
+  document.getElementById('assign-section').scrollIntoView({behavior:'smooth'});
+
+  // 기존 지정 목록
+  const table = type === 'probation' ? 'probation_targets' : 'leader_assign';
+  let existing = [];
+  if(type === 'probation') {
+    existing = await api(`probation_targets?period_id=eq.${periodId}`) || [];
+  } else {
+    existing = await api(`leader_assign?period_id=eq.${periodId}`) || [];
+  }
+
+  const evalTypeOptions = type === 'probation'
+    ? ['1차(셀프)','2차(부팀장)','3차(팀장)']
+    : [];
+
+  document.getElementById('assign-content').innerHTML = `
+    <div style="margin-bottom:20px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px">새 대상자 추가</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr ${type==='probation'?'1fr':''} auto;gap:10px;align-items:end">
+        <div>
+          <div style="font-size:12px;color:#64748b;margin-bottom:4px">평가 대상자</div>
+          <select id="assign-target" style="width:100%">
+            <option value="">선택</option>
+            ${allEmployees.map(e=>`<option value="${e.id}" data-name="${e.name}">${e.name} (${e.dept})</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <div style="font-size:12px;color:#64748b;margin-bottom:4px">평가자</div>
+          <select id="assign-evaluator" style="width:100%">
+            <option value="">선택</option>
+            ${allEmployees.map(e=>`<option value="${e.id}" data-name="${e.name}">${e.name} (${e.dept})</option>`).join('')}
+          </select>
+        </div>
+        ${type==='probation' ? `<div>
+          <div style="font-size:12px;color:#64748b;margin-bottom:4px">평가자 유형</div>
+          <select id="assign-eval-type" style="width:100%">
+            ${evalTypeOptions.map(o=>`<option>${o}</option>`).join('')}
+          </select>
+        </div>` : ''}
+        <button class="btn btn-primary" onclick="addAssign('${periodId}','${type}')">추가</button>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px">지정된 목록</div>
+      <div id="assign-list">
+        ${existing.length ? existing.map(a=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:13px">
+            <div>
+              <span style="font-weight:600">대상: ${a.target_name}</span>
+              <span style="color:#64748b;margin-left:12px">평가자: ${a.evaluator_name}</span>
+              ${a.evaluator_type ? `<span style="margin-left:8px;background:#8b5cf615;color:#8b5cf6;padding:2px 8px;border-radius:10px;font-size:11px">${a.evaluator_type}</span>` : ''}
+            </div>
+            <button onclick="removeAssign('${a.id}','${type}','${periodId}')" class="btn btn-danger" style="font-size:11px;padding:3px 8px">삭제</button>
+          </div>`).join('') : '<div class="empty">지정된 대상자가 없어요</div>'}
+      </div>
+    </div>`;
+}
+
+async function addAssign(periodId, type) {
+  const targetSel = document.getElementById('assign-target');
+  const evaluatorSel = document.getElementById('assign-evaluator');
+  const targetId = targetSel.value;
+  const targetName = targetSel.options[targetSel.selectedIndex]?.dataset?.name || '';
+  const evaluatorId = evaluatorSel.value;
+  const evaluatorName = evaluatorSel.options[evaluatorSel.selectedIndex]?.dataset?.name || '';
+  if(!targetId || !evaluatorId) return alert('대상자와 평가자를 선택해주세요.');
+
+  if(type === 'probation') {
+    const evalType = document.getElementById('assign-eval-type').value;
+    await api('probation_targets','POST',{period_id:periodId,target_id:targetId,target_name:targetName,evaluator_id:evaluatorId,evaluator_name:evaluatorName,evaluator_type:evalType});
+  } else {
+    await api('leader_assign','POST',{period_id:periodId,target_id:targetId,target_name:targetName,evaluator_id:evaluatorId,evaluator_name:evaluatorName});
+  }
+
+  const titleEl = document.getElementById('assign-title').textContent;
+  const match = titleEl.match(/\[(.+)\]/);
+  const title = match ? match[1] : '';
+  openAssign(periodId, type, title);
+}
+
+async function removeAssign(id, type, periodId) {
+  const table = type === 'probation' ? 'probation_targets' : 'leader_assign';
+  await api(`${table}?id=eq.${id}`, 'DELETE');
+  const titleEl = document.getElementById('assign-title').textContent;
+  const match = titleEl.match(/\[(.+)\]/);
+  const title = match ? match[1] : '';
+  openAssign(periodId, type, title);
 }
 
 async function createPeriod() {
@@ -1845,6 +1945,17 @@ initApp();
         <div class="card">
           <div class="card-title">평가 기간 목록</div>
           <div id="period-list"><div class="loading">로딩 중...</div></div>
+        </div>
+      </div>
+
+      <!-- 대상자/평가자 지정 -->
+      <div id="assign-section" style="display:none;margin-top:20px">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div class="card-title" style="margin-bottom:0" id="assign-title">대상자 및 평가자 지정</div>
+            <button class="btn btn-gray" onclick="closeAssign()">닫기</button>
+          </div>
+          <div id="assign-content"></div>
         </div>
       </div>
     </div>
