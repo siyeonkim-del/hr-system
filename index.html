@@ -1259,7 +1259,7 @@ async function renderPeriods() {
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <span style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;background:${p.is_open?'#10b98115':'#64748b15'};color:${p.is_open?'#10b981':'#64748b'}">${p.is_open?'진행 중':'종료'}</span>
-        ${showAssign ? `<button onclick="openAssign('${p.id}','${p.type}','${p.title}')" class="btn btn-primary" style="font-size:11px;padding:4px 10px">대상자 지정</button>` : ''}
+        ${showAssign ? '<button onclick="openAssign(\'' + p.id + '\',\'' + p.type + '\',\'' + p.title + '\')" class="btn btn-primary" style="font-size:11px;padding:4px 10px">대상자 지정</button>' : ''}
         <button onclick="togglePeriod('${p.id}',${p.is_open})" class="btn" style="color:${p.is_open?'#f59e0b':'#10b981'};border-color:${p.is_open?'#f59e0b44':'#10b98144'};font-size:11px;padding:4px 10px">${p.is_open?'종료':'재개'}</button>
         <button onclick="deletePeriod('${p.id}')" class="btn btn-danger" style="font-size:11px;padding:4px 10px">삭제</button>
       </div>
