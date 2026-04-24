@@ -1856,6 +1856,10 @@ async function submitLeaderEval(periodId, targetId, targetName) {
   const growth_potential = document.getElementById('ldr-growth-potential').value;
   const improvement = document.getElementById('ldr-improvement').value.trim();
 
+  const strength_val = document.getElementById('ldr-strength').value.trim();
+  const improvement_val = document.getElementById('ldr-improvement').value.trim();
+  if(!strength_val) return alert('강점은 필수 항목입니다.');
+  if(!improvement_val) return alert('개선점은 필수 항목입니다.');
   await api('leader_evaluations','POST',{
     period_id:periodId, evaluator_id:currentEmp.id, evaluator_name:currentEmp.name,
     target_id:targetId, target_name:targetName,
@@ -1903,13 +1907,16 @@ async function renderProbationEval() {
   const submitted = await api(`probation_evaluations?period_id=eq.${period.id}&evaluator_id=eq.${currentEmp.id}`) || [];
   const submittedTargetIds = submitted.map(s=>s.target_id);
 
-  // 수습사원 대상자 목록 가져오기 (period에 저장된 대상자)
-  const targets = await api(`probation_targets?period_id=eq.${period.id}`) || [];
+  // 이 평가자에게 배정된 대상자만
+  const targets = await api(`probation_targets?period_id=eq.${period.id}&evaluator_id=eq.${currentEmp.id}`) || [];
 
   if(!targets.length) {
     document.getElementById('probation-eval-content').innerHTML = '<div class="empty">배정된 수습평가 대상자가 없어요</div>';
     return;
   }
+
+  // 이미 제출한 평가 내용
+  const mySubmissions = await api(`probation_evaluations?period_id=eq.${period.id}&evaluator_id=eq.${currentEmp.id}&order=created_at.desc`) || [];
 
   document.getElementById('probation-eval-content').innerHTML = `
     <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:16px;margin-bottom:20px">
@@ -1918,11 +1925,30 @@ async function renderProbationEval() {
     </div>
     ${targets.map(t => {
       const alreadyDone = submittedTargetIds.includes(t.target_id);
+      const mySubmit = mySubmissions.find(s=>s.target_id===t.target_id);
+      const scoreKeys = ['attitude_1','attitude_2','attitude_3','attitude_4','ability_1','ability_2','ability_3','ability_4','basic_1','basic_2'];
+      const gradeC = {5:'#10b981',4:'#3b82f6',3:'#f59e0b',2:'#f97316',1:'#ef4444'};
       return `<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:16px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
           <div style="font-weight:800;font-size:15px">${t.target_name} 평가</div>
           ${alreadyDone ? '<span style="background:#f0fdf4;color:#16a34a;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700">✅ 제출 완료</span>' : ''}
         </div>
+        ${alreadyDone && mySubmit ? `
+          <div style="background:#f8fafc;border-radius:10px;padding:14px;margin-bottom:12px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:#64748b">내가 제출한 평가</div>
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px">
+              ${scoreKeys.map((k,i)=>{
+                const val=mySubmit[k]||0;
+                const c=gradeC[val]||'#64748b';
+                const labels=['업무태도1','업무태도2','업무태도3','업무태도4','업무능력1','업무능력2','업무능력3','업무능력4','기본소양1','기본소양2'];
+                return `<div style="text-align:center;padding:6px;background:${c}15;border-radius:6px;border:1px solid ${c}33">
+                  <div style="font-size:16px;font-weight:900;color:${c}">${val}</div>
+                  <div style="font-size:9px;color:#64748b;margin-top:2px">${labels[i]}</div>
+                </div>`;
+              }).join('')}
+            </div>
+            ${mySubmit.comment ? `<div style="font-size:12px;color:#64748b;padding:8px;background:white;border-radius:6px;border:1px solid #e2e8f0">${mySubmit.comment}</div>` : ''}
+          </div>` : ''}
         ${alreadyDone ? '' : renderProbationForm(period.id, t.target_id, t.target_name, t.evaluator_type)}
       </div>`;
     }).join('')}`;
@@ -1954,7 +1980,7 @@ function renderProbationForm(periodId, targetId, targetName, evaluatorType) {
           </div>`).join('')}
       </div>`).join('')}
     <div style="margin-bottom:16px">
-      <div style="font-size:12px;color:#64748b;margin-bottom:4px;font-weight:600">평가자 의견</div>
+      <div style="font-size:12px;color:#64748b;margin-bottom:4px;font-weight:600">평가자 의견 <span style="color:#ef4444">*</span></div>
       <textarea id="prob-comment-${targetId}" placeholder="수습 기간 동안의 업무 수행 내용, 강점 및 보완이 필요한 부분을 작성해주세요"
         style="width:100%;height:100px;resize:vertical;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-family:inherit;font-size:13px;outline:none"></textarea>
     </div>
@@ -1995,6 +2021,7 @@ async function submitProbationEval(periodId, targetId, targetName) {
     if(!scores[k]) return alert('모든 항목을 평가해주세요.');
   }
   const comment = document.getElementById(`prob-comment-${targetId}`).value.trim();
+  if(!comment) return alert('평가자 의견은 필수 항목입니다.');
   await api('probation_evaluations','POST',{
     period_id:periodId, target_id:targetId, target_name:targetName,
     evaluator_id:currentEmp.id, evaluator_name:currentEmp.name,
