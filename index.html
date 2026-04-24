@@ -125,7 +125,7 @@
     <button class="nav-btn" id="etab-my-leave" onclick="showEmpTab('my-leave',this)">휴가 신청</button>
     <button class="nav-btn" id="etab-peer-eval" onclick="showEmpTab('peer-eval',this)">상호평가</button>
     <button class="nav-btn" id="etab-leader-eval" onclick="showEmpTab('leader-eval',this)">리더평가</button>
-    <button class="nav-btn" id="etab-probation-eval" onclick="showEmpTab('probation-eval',this)">수습사원 평가</button>
+    <button class="nav-btn" id="etab-probation-eval" onclick="showEmpTab('probation-eval',this)">수습평가</button>
     <button class="nav-btn" id="etab-org" onclick="showEmpTab('org',this)">조직도</button>
     <div style="margin-top:auto;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:12px;padding:14px">
       <div style="font-size:11px;color:#64748b">로그인 중</div>
@@ -206,9 +206,9 @@
       <div id="leader-eval-content"><div class="loading">로딩 중...</div></div>
     </div>
 
-    <!-- 수습사원 평가 -->
+    <!-- 수습평가 -->
     <div id="emp-tab-probation-eval" class="emp-tab" style="display:none">
-      <div style="font-size:24px;font-weight:900;margin-bottom:6px">수습사원 평가</div>
+      <div style="font-size:24px;font-weight:900;margin-bottom:6px">수습평가</div>
       <div style="color:#64748b;font-size:13px;margin-bottom:24px">수습사원의 역량을 평가해주세요</div>
       <div id="probation-eval-content"><div class="loading">로딩 중...</div></div>
     </div>
@@ -382,7 +382,7 @@
       <button id="evtab-periods" onclick="showEvalTab('periods')" style="padding:10px 20px;border:none;background:none;font-size:14px;font-weight:700;color:#3b82f6;border-bottom:2px solid #3b82f6;margin-bottom:-2px;cursor:pointer;font-family:inherit">평가 기간 관리</button>
       <button id="evtab-peer-results" onclick="showEvalTab('peer-results')" style="padding:10px 20px;border:none;background:none;font-size:14px;font-weight:600;color:#64748b;cursor:pointer;font-family:inherit">상호평가 결과</button>
       <button id="evtab-leader-results" onclick="showEvalTab('leader-results')" style="padding:10px 20px;border:none;background:none;font-size:14px;font-weight:600;color:#64748b;cursor:pointer;font-family:inherit">리더평가 결과</button>
-      <button id="evtab-probation-results" onclick="showEvalTab('probation-results')" style="padding:10px 20px;border:none;background:none;font-size:14px;font-weight:600;color:#64748b;cursor:pointer;font-family:inherit">수습사원 평가 결과</button>
+      <button id="evtab-probation-results" onclick="showEvalTab('probation-results')" style="padding:10px 20px;border:none;background:none;font-size:14px;font-weight:600;color:#64748b;cursor:pointer;font-family:inherit">수습평가 결과</button>
     </div>
 
     <!-- 평가 기간 관리 -->
@@ -399,7 +399,7 @@
             <select id="ep-type" style="width:100%">
               <option value="peer">상호평가 (동료 칭찬제)</option>
               <option value="leader">리더평가</option>
-              <option value="probation">수습사원 평가</option>
+              <option value="probation">수습평가</option>
             </select>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
@@ -458,11 +458,11 @@
       </div>
     </div>
 
-    <!-- 수습사원 평가 결과 -->
+    <!-- 수습평가 결과 -->
     <div id="eval-tab-probation-results" style="display:none">
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-          <div class="card-title" style="margin-bottom:0">수습사원 평가 결과</div>
+          <div class="card-title" style="margin-bottom:0">수습평가 결과</div>
           <select id="probation-period-filter" style="width:220px" onchange="renderProbationResults()">
             <option value="">평가 기간 선택</option>
           </select>
@@ -501,7 +501,7 @@
     <input type="hidden" id="edit-id">
     <div class="form-grid">
       <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">이름 *</div><input type="text" id="edit-name" style="width:100%"></div>
-      <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">부서 *</div><input type="text" id="edit-dept" style="width:100%"></div>
+      <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">부서</div><input type="text" id="edit-dept" placeholder="(선택)" style="width:100%"></div>
       <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">직무 *</div><input type="text" id="edit-role" style="width:100%"></div>
       <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">이메일</div><input type="email" id="edit-email" style="width:100%"></div>
       <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">연락처</div><input type="text" id="edit-phone" style="width:100%"></div>
@@ -520,7 +520,7 @@
     <h3>직원 추가</h3>
     <div class="form-grid">
       <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">이름 *</div><input type="text" id="new-name" placeholder="홍길동" style="width:100%"></div>
-      <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">부서 *</div><input type="text" id="new-dept" placeholder="콘텐츠팀" style="width:100%"></div>
+      <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">부서</div><input type="text" id="new-dept" placeholder="콘텐츠팀 (선택)" style="width:100%"></div>
       <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">직무 *</div><input type="text" id="new-role" placeholder="아트 디렉터" style="width:100%"></div>
       <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">이메일</div><input type="email" id="new-email" placeholder="hong@zenithcompany.net" style="width:100%"></div>
       <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">연락처</div><input type="text" id="new-phone" placeholder="010-0000-0000" style="width:100%"></div>
@@ -700,7 +700,7 @@ async function addEmployee() {
   const email=document.getElementById('new-email').value.trim();
   const phone=document.getElementById('new-phone').value.trim();
   const join_date=document.getElementById('new-joindate').value;
-  if(!name||!dept||!role) return alert('이름, 부서, 직무는 필수입니다.');
+  if(!name||!role) return alert('이름, 직무는 필수입니다.');
   await api('employees','POST',{name,dept,role,email:email||null,phone:phone||null,join_date:join_date||null});
   closeModal('add-emp-modal'); renderEmps(); alert(`${name}님이 추가되었습니다!`);
 }
@@ -933,7 +933,7 @@ async function saveEmployee() {
   const email = document.getElementById('edit-email').value.trim();
   const phone = document.getElementById('edit-phone').value.trim();
   const join_date = document.getElementById('edit-joindate').value;
-  if(!name||!dept||!role) return alert('이름, 부서, 직무는 필수입니다.');
+  if(!name||!role) return alert('이름, 직무는 필수입니다.');
   await api(`employees?id=eq.${id}`, 'PATCH', {name, dept, role, email:email||null, phone:phone||null, join_date:join_date||null});
   closeModal('edit-emp-modal');
   renderEmps();
@@ -1378,7 +1378,7 @@ function showEvalTab(id) {
 async function renderPeriods() {
   evalPeriods = await api('evaluation_periods?select=*&order=created_at.desc') || [];
   document.getElementById('period-list').innerHTML = evalPeriods.length ? evalPeriods.map(p => {
-    const typeMap = { peer:'상호평가', leader:'리더평가', probation:'수습사원 평가' };
+    const typeMap = { peer:'상호평가', leader:'리더평가', probation:'수습평가' };
     const colorMap = { peer:'#8b5cf6', leader:'#3b82f6', probation:'#f59e0b' };
     const typeLabel = typeMap[p.type] || p.type;
     const typeColor = colorMap[p.type] || '#64748b';
@@ -1537,6 +1537,11 @@ async function addAssign(periodId, type) {
     for(const evaluator of checkedEvaluators) {
       if(type === 'probation') {
         await api('probation_targets','POST',{period_id:periodId,target_id:target.id,target_name:target.name,evaluator_id:evaluator.id,evaluator_name:evaluator.name,evaluator_type:evalType});
+        // 대상자 본인도 셀프평가자로 자동 추가
+        const alreadySelf = await api(`probation_targets?period_id=eq.${periodId}&target_id=eq.${target.id}&evaluator_id=eq.${target.id}`);
+        if(!alreadySelf || alreadySelf.length === 0) {
+          await api('probation_targets','POST',{period_id:periodId,target_id:target.id,target_name:target.name,evaluator_id:target.id,evaluator_name:target.name,evaluator_type:'1차(셀프)'});
+        }
       } else {
         await api('leader_assign','POST',{period_id:periodId,target_id:target.id,target_name:target.name,evaluator_id:evaluator.id,evaluator_name:evaluator.name});
       }
@@ -1866,7 +1871,7 @@ async function submitLeaderEval(periodId, targetId, targetName) {
   renderLeaderEval();
 }
 
-// ── 수습사원 평가 ──
+// ── 수습평가 ──
 const probationItems = {
   attitude: [
     '담당 업무에 충실하며 성실한 자세로 근무한다',
@@ -1895,7 +1900,7 @@ async function renderProbationEval() {
   const periods = await api('evaluation_periods?type=eq.probation&is_open=eq.true&order=created_at.desc') || [];
 
   if(!periods.length) {
-    document.getElementById('probation-eval-content').innerHTML = '<div class="empty">현재 진행 중인 수습사원 평가가 없어요</div>';
+    document.getElementById('probation-eval-content').innerHTML = '<div class="empty">현재 진행 중인 수습평가가 없어요</div>';
     return;
   }
 
@@ -1908,7 +1913,7 @@ async function renderProbationEval() {
   const targets = await api(`probation_targets?period_id=eq.${period.id}`) || [];
 
   if(!targets.length) {
-    document.getElementById('probation-eval-content').innerHTML = '<div class="empty">배정된 수습사원 평가 대상자가 없어요</div>';
+    document.getElementById('probation-eval-content').innerHTML = '<div class="empty">배정된 수습평가 대상자가 없어요</div>';
     return;
   }
 
@@ -2002,11 +2007,11 @@ async function submitProbationEval(periodId, targetId, targetName) {
     evaluator_type: '평가자',
     ...scores, comment
   });
-  alert(`${targetName}님 수습사원 평가가 제출되었습니다!`);
+  alert(`${targetName}님 수습평가가 제출되었습니다!`);
   renderProbationEval();
 }
 
-// 관리자 - 수습사원 평가 결과
+// 관리자 - 수습평가 결과
 async function renderProbationResults() {
   const periodId = document.getElementById('probation-period-filter').value;
   if(!periodId) { document.getElementById('probation-results-content').innerHTML='<div class="empty">평가 기간을 선택해주세요</div>'; return; }
@@ -2278,7 +2283,7 @@ async function submitAdminLeaderEval(periodId, targetId, targetName) {
 async function renderAdminProbationEval() {
   const emp = currentEmp; if(!emp) return;
   const periods = await api('evaluation_periods?type=eq.probation&is_open=eq.true&order=created_at.desc') || [];
-  if(!periods.length) { document.getElementById('admin-eval-probation-content').innerHTML='<div class="empty">진행 중인 수습사원 평가가 없어요</div>'; return; }
+  if(!periods.length) { document.getElementById('admin-eval-probation-content').innerHTML='<div class="empty">진행 중인 수습평가가 없어요</div>'; return; }
   const period = periods[0];
   const targets = await api(`probation_targets?period_id=eq.${period.id}&evaluator_id=eq.${emp.id}`) || [];
   if(!targets.length) { document.getElementById('admin-eval-probation-content').innerHTML='<div class="empty">배정된 수습사원이 없어요</div>'; return; }
@@ -2354,7 +2359,7 @@ initApp();
     <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:2px solid #e2e8f0;padding-bottom:0">
       <button id="aetab-peer" onclick="showAdminEvalTab('peer')" style="padding:8px 16px;border:none;background:none;font-size:13px;font-weight:700;color:#3b82f6;border-bottom:2px solid #3b82f6;margin-bottom:-2px;cursor:pointer;font-family:inherit">상호평가</button>
       <button id="aetab-leader" onclick="showAdminEvalTab('leader')" style="padding:8px 16px;border:none;background:none;font-size:13px;font-weight:600;color:#64748b;cursor:pointer;font-family:inherit">리더평가</button>
-      <button id="aetab-probation" onclick="showAdminEvalTab('probation')" style="padding:8px 16px;border:none;background:none;font-size:13px;font-weight:600;color:#64748b;cursor:pointer;font-family:inherit">수습사원 평가</button>
+      <button id="aetab-probation" onclick="showAdminEvalTab('probation')" style="padding:8px 16px;border:none;background:none;font-size:13px;font-weight:600;color:#64748b;cursor:pointer;font-family:inherit">수습평가</button>
     </div>
     <div id="admin-eval-peer-content"></div>
     <div id="admin-eval-leader-content" style="display:none"></div>
