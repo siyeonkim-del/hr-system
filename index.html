@@ -125,6 +125,7 @@
     <button class="nav-btn" id="etab-my-leave" onclick="showEmpTab('my-leave',this)">휴가 신청</button>
     <button class="nav-btn" id="etab-peer-eval" onclick="showEmpTab('peer-eval',this)">상호평가</button>
     <button class="nav-btn" id="etab-leader-eval" onclick="showEmpTab('leader-eval',this)">리더평가</button>
+    <button class="nav-btn" id="etab-probation-eval" onclick="showEmpTab('probation-eval',this)">수습사원 평가</button>
     <button class="nav-btn" id="etab-org" onclick="showEmpTab('org',this)">조직도</button>
     <div style="margin-top:auto;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:12px;padding:14px">
       <div style="font-size:11px;color:#64748b">로그인 중</div>
@@ -203,6 +204,13 @@
       <div style="font-size:24px;font-weight:900;margin-bottom:6px">리더평가</div>
       <div style="color:#64748b;font-size:13px;margin-bottom:24px">팀원의 역량을 평가해주세요</div>
       <div id="leader-eval-content"><div class="loading">로딩 중...</div></div>
+    </div>
+
+    <!-- 수습사원 평가 -->
+    <div id="emp-tab-probation-eval" class="emp-tab" style="display:none">
+      <div style="font-size:24px;font-weight:900;margin-bottom:6px">수습사원 평가</div>
+      <div style="color:#64748b;font-size:13px;margin-bottom:24px">수습사원의 역량을 평가해주세요</div>
+      <div id="probation-eval-content"><div class="loading">로딩 중...</div></div>
     </div>
 
     <!-- 조직도 -->
@@ -929,6 +937,7 @@ function showEmpTab(id, btn) {
   if(id==='my-leave') renderMyLeave();
   if(id==='peer-eval') renderPeerEval();
   if(id==='leader-eval') renderLeaderEval();
+  if(id==='probation-eval') renderProbationEval();
   if(id==='org') renderEmpOrg();
 }
 
@@ -1217,7 +1226,7 @@ function calcWorkingDays(from_date, to_date) {
 let evalPeriods = [];
 
 function showEvalTab(id) {
-  ['periods','peer-results','leader-results'].forEach(t => {
+  ['periods','peer-results','leader-results','probation-results'].forEach(t => {
     document.getElementById('eval-tab-'+t).style.display = t===id ? 'block' : 'none';
     const btn = document.getElementById('evtab-'+t);
     if(btn) {
@@ -1229,6 +1238,7 @@ function showEvalTab(id) {
   if(id==='periods') renderPeriods();
   if(id==='peer-results') { loadPeriodsForFilter('peer'); renderPeerResults(); }
   if(id==='leader-results') { loadPeriodsForFilter('leader'); renderLeaderResults(); }
+  if(id==='probation-results') { loadPeriodsForFilter('probation'); renderProbationResults(); }
 }
 
 async function renderPeriods() {
@@ -1555,6 +1565,201 @@ async function submitLeaderEval(periodId, targetId, targetName) {
   renderLeaderEval();
 }
 
+// ── 수습사원 평가 ──
+const probationItems = {
+  attitude: [
+    '담당 업무에 충실하며 성실한 자세로 근무한다',
+    '담당 업무를 자발적이고 의욕적으로 수행한다',
+    '팀워크를 중시하며 동료들과의 관계가 원만하다',
+    '새로운 업무에 대해 도전하려는 의지가 있다',
+  ],
+  ability: [
+    '업무 이해가 빠르며 업무 처리에 점차 능숙함을 보인다',
+    '수습 기간에 요구되는 수준의 관련 지식을 갖추고 있다',
+    '업무 전달 내용을 정확히 이해하고 지시에 따라 수행한다',
+    '업무 진행 현황을 수시로 공유하며, 필요 시 적극 보고한다',
+  ],
+  basic: [
+    '출퇴근 시간을 준수하고 사내 규정을 성실히 따른다',
+    '매사에 긍정적인 사고와 태도를 가지고 있다',
+  ]
+};
+
+const gradeLabels = ['S(5)','A(4)','B(3)','C(2)','D(1)'];
+const gradeValues = [5,4,3,2,1];
+const gradeColors = {5:'#10b981',4:'#3b82f6',3:'#f59e0b',2:'#f97316',1:'#ef4444'};
+
+async function renderProbationEval() {
+  if(!currentEmp) return;
+  const periods = await api('evaluation_periods?type=eq.probation&is_open=eq.true&order=created_at.desc') || [];
+
+  if(!periods.length) {
+    document.getElementById('probation-eval-content').innerHTML = '<div class="empty">현재 진행 중인 수습사원 평가가 없어요</div>';
+    return;
+  }
+
+  const period = periods[0];
+  // 이 평가 기간에서 평가해야 할 대상자 찾기 (이미 제출 여부 확인)
+  const submitted = await api(`probation_evaluations?period_id=eq.${period.id}&evaluator_id=eq.${currentEmp.id}`) || [];
+  const submittedTargetIds = submitted.map(s=>s.target_id);
+
+  // 수습사원 대상자 목록 가져오기 (period에 저장된 대상자)
+  const targets = await api(`probation_targets?period_id=eq.${period.id}`) || [];
+
+  if(!targets.length) {
+    document.getElementById('probation-eval-content').innerHTML = '<div class="empty">배정된 수습사원 평가 대상자가 없어요</div>';
+    return;
+  }
+
+  document.getElementById('probation-eval-content').innerHTML = `
+    <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:16px;margin-bottom:20px">
+      <div style="font-weight:700;color:#0369a1">${period.title}</div>
+      <div style="font-size:12px;color:#0284c7;margin-top:4px">${period.start_date||''} ~ ${period.end_date||''}</div>
+    </div>
+    ${targets.map(t => {
+      const alreadyDone = submittedTargetIds.includes(t.target_id);
+      return `<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div style="font-weight:800;font-size:15px">${t.target_name} 평가</div>
+          ${alreadyDone ? '<span style="background:#f0fdf4;color:#16a34a;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700">✅ 제출 완료</span>' : ''}
+        </div>
+        ${alreadyDone ? '' : renderProbationForm(period.id, t.target_id, t.target_name, t.evaluator_type)}
+      </div>`;
+    }).join('')}`;
+}
+
+function renderProbationForm(periodId, targetId, targetName, evaluatorType) {
+  const sections = [
+    {key:'attitude', label:'업무태도', items: probationItems.attitude},
+    {key:'ability', label:'업무능력', items: probationItems.ability},
+    {key:'basic', label:'기본소양', items: probationItems.basic},
+  ];
+
+  return `
+    <div style="font-size:12px;color:#8b5cf6;font-weight:600;margin-bottom:16px">평가자 유형: ${evaluatorType}</div>
+    ${sections.map(sec => `
+      <div style="margin-bottom:20px">
+        <div style="font-weight:700;font-size:14px;color:#1e293b;margin-bottom:10px;padding:8px 12px;background:#f1f5f9;border-radius:8px">${sec.label}</div>
+        ${sec.items.map((item, idx) => `
+          <div style="margin-bottom:12px;padding:12px;background:#f8fafc;border-radius:8px">
+            <div style="font-size:13px;color:#1e293b;margin-bottom:8px">${item}</div>
+            <div style="display:flex;gap:6px">
+              ${gradeLabels.map((g,gi) => `
+                <div data-key="${sec.key}_${idx+1}" data-val="${gradeValues[gi]}"
+                  onclick="selectProbScore('${sec.key}_${idx+1}',${gradeValues[gi]})"
+                  style="flex:1;text-align:center;padding:6px;border:2px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;transition:all 0.15s">
+                  ${g}
+                </div>`).join('')}
+            </div>
+          </div>`).join('')}
+      </div>`).join('')}
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;color:#64748b;margin-bottom:4px;font-weight:600">평가자 의견</div>
+      <textarea id="prob-comment-${targetId}" placeholder="수습 기간 동안의 업무 수행 내용, 강점 및 보완이 필요한 부분을 작성해주세요"
+        style="width:100%;height:100px;resize:vertical;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-family:inherit;font-size:13px;outline:none"></textarea>
+    </div>
+    <button class="btn btn-primary" style="width:100%;padding:12px"
+      onclick="submitProbationEval('${periodId}','${targetId}','${targetName}')">평가 제출하기</button>`;
+}
+
+function selectProbScore(key, val) {
+  document.querySelectorAll(`[data-key="${key}"]`).forEach(el => {
+    el.style.background = 'white';
+    el.style.borderColor = '#e2e8f0';
+    el.style.color = '#1e293b';
+  });
+  const el = document.querySelector(`[data-key="${key}"][data-val="${val}"]`);
+  if(el) {
+    const c = gradeColors[val] || '#3b82f6';
+    el.style.background = c;
+    el.style.borderColor = c;
+    el.style.color = 'white';
+  }
+}
+
+function getProbScore(key) {
+  const el = document.querySelector(`[data-key="${key}"][style*="color: white"]`);
+  return el ? parseInt(el.dataset.val) : null;
+}
+
+async function submitProbationEval(periodId, targetId, targetName) {
+  if(!currentEmp) return;
+  const keys = [
+    'attitude_1','attitude_2','attitude_3','attitude_4',
+    'ability_1','ability_2','ability_3','ability_4',
+    'basic_1','basic_2'
+  ];
+  const scores = {};
+  for(const k of keys) {
+    scores[k] = getProbScore(k);
+    if(!scores[k]) return alert('모든 항목을 평가해주세요.');
+  }
+  const comment = document.getElementById(`prob-comment-${targetId}`).value.trim();
+  await api('probation_evaluations','POST',{
+    period_id:periodId, target_id:targetId, target_name:targetName,
+    evaluator_id:currentEmp.id, evaluator_name:currentEmp.name,
+    evaluator_type: '평가자',
+    ...scores, comment
+  });
+  alert(`${targetName}님 수습사원 평가가 제출되었습니다!`);
+  renderProbationEval();
+}
+
+// 관리자 - 수습사원 평가 결과
+async function renderProbationResults() {
+  const periodId = document.getElementById('probation-period-filter').value;
+  if(!periodId) { document.getElementById('probation-results-content').innerHTML='<div class="empty">평가 기간을 선택해주세요</div>'; return; }
+  const results = await api(`probation_evaluations?period_id=eq.${periodId}&order=created_at.desc`) || [];
+  if(!results.length) { document.getElementById('probation-results-content').innerHTML='<div class="empty">제출된 평가가 없어요</div>'; return; }
+
+  const grouped = {};
+  results.forEach(r => {
+    if(!grouped[r.target_name]) grouped[r.target_name] = [];
+    grouped[r.target_name].push(r);
+  });
+
+  const scoreKeys = [
+    {key:'attitude_1',label:'업무태도1'},{key:'attitude_2',label:'업무태도2'},{key:'attitude_3',label:'업무태도3'},{key:'attitude_4',label:'업무태도4'},
+    {key:'ability_1',label:'업무능력1'},{key:'ability_2',label:'업무능력2'},{key:'ability_3',label:'업무능력3'},{key:'ability_4',label:'업무능력4'},
+    {key:'basic_1',label:'기본소양1'},{key:'basic_2',label:'기본소양2'},
+  ];
+
+  document.getElementById('probation-results-content').innerHTML = Object.entries(grouped).map(([name, evals]) => {
+    const avgScore = evals.reduce((sum,e) => {
+      const total = scoreKeys.reduce((s,k)=>s+(e[k.key]||0),0);
+      return sum + total/scoreKeys.length;
+    }, 0) / evals.length;
+
+    return `<div style="margin-bottom:24px;padding:20px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div style="font-weight:800;font-size:16px">수습사원: ${name}</div>
+        <div style="font-size:22px;font-weight:900;color:#3b82f6">${avgScore.toFixed(1)}점</div>
+      </div>
+      ${evals.map(e => {
+        const total = scoreKeys.reduce((s,k)=>s+(e[k.key]||0),0)/scoreKeys.length;
+        return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+            <span style="font-weight:700">${e.evaluator_name} <span style="font-size:11px;color:#64748b">(${e.evaluator_type})</span></span>
+            <span style="font-weight:700;color:#3b82f6">${total.toFixed(1)}점</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px">
+            ${['업무태도','업무태도','업무태도','업무태도','업무능력','업무능력','업무능력','업무능력','기본소양','기본소양'].map((cat,i) => {
+              const key = scoreKeys[i].key;
+              const val = e[key]||0;
+              const c = gradeColors[val]||'#64748b';
+              return `<div style="text-align:center;padding:6px;background:${c}15;border-radius:6px;border:1px solid ${c}33">
+                <div style="font-size:14px;font-weight:900;color:${c}">${val}</div>
+                <div style="font-size:9px;color:#64748b;margin-top:2px">${cat}${i%4+1}</div>
+              </div>`;
+            }).join('')}
+          </div>
+          ${e.comment ? `<div style="font-size:12px;color:#64748b;padding:8px;background:#f8fafc;border-radius:6px">${e.comment}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+}
+
 // 초기 실행
 initApp();
 </script>
@@ -1605,6 +1810,7 @@ initApp();
       <button id="evtab-periods" onclick="showEvalTab('periods')" style="padding:10px 20px;border:none;background:none;font-size:14px;font-weight:700;color:#3b82f6;border-bottom:2px solid #3b82f6;margin-bottom:-2px;cursor:pointer;font-family:inherit">평가 기간 관리</button>
       <button id="evtab-peer-results" onclick="showEvalTab('peer-results')" style="padding:10px 20px;border:none;background:none;font-size:14px;font-weight:600;color:#64748b;cursor:pointer;font-family:inherit">상호평가 결과</button>
       <button id="evtab-leader-results" onclick="showEvalTab('leader-results')" style="padding:10px 20px;border:none;background:none;font-size:14px;font-weight:600;color:#64748b;cursor:pointer;font-family:inherit">리더평가 결과</button>
+      <button id="evtab-probation-results" onclick="showEvalTab('probation-results')" style="padding:10px 20px;border:none;background:none;font-size:14px;font-weight:600;color:#64748b;cursor:pointer;font-family:inherit">수습사원 평가 결과</button>
     </div>
 
     <!-- 평가 기간 관리 -->
@@ -1621,6 +1827,7 @@ initApp();
             <select id="ep-type" style="width:100%">
               <option value="peer">상호평가 (동료 칭찬제)</option>
               <option value="leader">리더평가</option>
+              <option value="probation">수습사원 평가</option>
             </select>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
@@ -1665,6 +1872,19 @@ initApp();
           </select>
         </div>
         <div id="leader-results-content"><div class="empty">평가 기간을 선택해주세요</div></div>
+      </div>
+    </div>
+
+    <!-- 수습사원 평가 결과 -->
+    <div id="eval-tab-probation-results" style="display:none">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div class="card-title" style="margin-bottom:0">수습사원 평가 결과</div>
+          <select id="probation-period-filter" style="width:220px" onchange="renderProbationResults()">
+            <option value="">평가 기간 선택</option>
+          </select>
+        </div>
+        <div id="probation-results-content"><div class="empty">평가 기간을 선택해주세요</div></div>
       </div>
     </div>
   </div>
