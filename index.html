@@ -1289,63 +1289,95 @@ async function openAssign(periodId, type, title) {
     ? ['1차(셀프)','2차(부팀장)','3차(팀장)']
     : [];
 
+  // 이미 지정된 대상자 ID 목록
+  const existingTargetIds = existing.map(a=>a.target_id);
+
   document.getElementById('assign-content').innerHTML = `
-    <div style="margin-bottom:20px">
-      <div style="font-size:14px;font-weight:700;margin-bottom:12px">새 대상자 추가</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr ${type==='probation'?'1fr':''} auto;gap:10px;align-items:end">
-        <div>
-          <div style="font-size:12px;color:#64748b;margin-bottom:4px">평가 대상자</div>
-          <select id="assign-target" style="width:100%">
-            <option value="">선택</option>
-            ${allEmployees.map(e=>`<option value="${e.id}" data-name="${e.name}">${e.name} (${e.dept})</option>`).join('')}
-          </select>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+      <!-- 왼쪽: 대상자 선택 -->
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="font-size:14px;font-weight:700">평가 대상자 선택</div>
+          <div style="display:flex;gap:6px">
+            <button onclick="toggleAllTargets(true)" class="btn btn-primary" style="font-size:11px;padding:4px 10px">전체 선택</button>
+            <button onclick="toggleAllTargets(false)" class="btn btn-gray" style="font-size:11px;padding:4px 10px">전체 해제</button>
+          </div>
         </div>
-        <div>
-          <div style="font-size:12px;color:#64748b;margin-bottom:4px">평가자</div>
-          <select id="assign-evaluator" style="width:100%">
-            <option value="">선택</option>
-            ${allEmployees.map(e=>`<option value="${e.id}" data-name="${e.name}">${e.name} (${e.dept})</option>`).join('')}
-          </select>
+        <div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;max-height:320px;overflow-y:auto">
+          ${allEmployees.map(e=>`
+            <label style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #f1f5f9;cursor:pointer;transition:background 0.1s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+              <input type="checkbox" class="target-checkbox" value="${e.id}" data-name="${e.name}" data-dept="${e.dept}" ${existingTargetIds.includes(e.id)?'disabled checked':''} style="width:16px;height:16px;cursor:pointer">
+              <div>
+                <div style="font-size:13px;font-weight:600">${e.name} ${existingTargetIds.includes(e.id)?'<span style="font-size:10px;color:#10b981">✓ 지정됨</span>':''}</div>
+                <div style="font-size:11px;color:#64748b">${e.dept} · ${e.role}</div>
+              </div>
+            </label>`).join('')}
         </div>
-        ${type==='probation' ? `<div>
-          <div style="font-size:12px;color:#64748b;margin-bottom:4px">평가자 유형</div>
+
+        ${type==='probation' ? `
+        <div style="margin-top:12px">
+          <div style="font-size:12px;color:#64748b;margin-bottom:4px;font-weight:600">평가자 유형</div>
           <select id="assign-eval-type" style="width:100%">
             ${evalTypeOptions.map(o=>`<option>${o}</option>`).join('')}
           </select>
         </div>` : ''}
-        <button class="btn btn-primary" onclick="addAssign('${periodId}','${type}')">추가</button>
       </div>
-    </div>
-    <div>
-      <div style="font-size:14px;font-weight:700;margin-bottom:12px">지정된 목록</div>
-      <div id="assign-list">
-        ${existing.length ? existing.map(a=>`
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:13px">
-            <div>
-              <span style="font-weight:600">대상: ${a.target_name}</span>
-              <span style="color:#64748b;margin-left:12px">평가자: ${a.evaluator_name}</span>
-              ${a.evaluator_type ? `<span style="margin-left:8px;background:#8b5cf615;color:#8b5cf6;padding:2px 8px;border-radius:10px;font-size:11px">${a.evaluator_type}</span>` : ''}
-            </div>
-            <button onclick="removeAssign('${a.id}','${type}','${periodId}')" class="btn btn-danger" style="font-size:11px;padding:3px 8px">삭제</button>
-          </div>`).join('') : '<div class="empty">지정된 대상자가 없어요</div>'}
+
+      <!-- 오른쪽: 평가자 선택 + 지정 목록 -->
+      <div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px">평가자 선택</div>
+        <div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;max-height:200px;overflow-y:auto;margin-bottom:12px">
+          ${allEmployees.map(e=>`
+            <label style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #f1f5f9;cursor:pointer" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+              <input type="radio" name="evaluator-radio" class="evaluator-radio" value="${e.id}" data-name="${e.name}" style="width:16px;height:16px;cursor:pointer">
+              <div>
+                <div style="font-size:13px;font-weight:600">${e.name}</div>
+                <div style="font-size:11px;color:#64748b">${e.dept} · ${e.role}</div>
+              </div>
+            </label>`).join('')}
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;margin-bottom:16px" onclick="addAssign('${periodId}','${type}')">선택한 대상자 추가하기</button>
+
+        <div style="font-size:14px;font-weight:700;margin-bottom:10px">지정된 목록 <span style="font-size:12px;color:#64748b;font-weight:400">(${existing.length}명)</span></div>
+        <div id="assign-list" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;max-height:200px;overflow-y:auto">
+          ${existing.length ? existing.map(a=>`
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:13px">
+              <div>
+                <span style="font-weight:600">${a.target_name}</span>
+                <span style="color:#64748b;font-size:11px;margin-left:8px">← ${a.evaluator_name}</span>
+                ${a.evaluator_type ? `<span style="margin-left:6px;background:#8b5cf615;color:#8b5cf6;padding:2px 6px;border-radius:8px;font-size:10px">${a.evaluator_type}</span>` : ''}
+              </div>
+              <button onclick="removeAssign('${a.id}','${type}','${periodId}')" class="btn btn-danger" style="font-size:10px;padding:2px 8px">삭제</button>
+            </div>`).join('') : '<div class="empty" style="padding:20px">지정된 대상자가 없어요</div>'}
+        </div>
       </div>
     </div>`;
 }
 
-async function addAssign(periodId, type) {
-  const targetSel = document.getElementById('assign-target');
-  const evaluatorSel = document.getElementById('assign-evaluator');
-  const targetId = targetSel.value;
-  const targetName = targetSel.options[targetSel.selectedIndex]?.dataset?.name || '';
-  const evaluatorId = evaluatorSel.value;
-  const evaluatorName = evaluatorSel.options[evaluatorSel.selectedIndex]?.dataset?.name || '';
-  if(!targetId || !evaluatorId) return alert('대상자와 평가자를 선택해주세요.');
+function toggleAllTargets(checked) {
+  document.querySelectorAll('.target-checkbox:not(:disabled)').forEach(cb => cb.checked = checked);
+}
 
-  if(type === 'probation') {
-    const evalType = document.getElementById('assign-eval-type').value;
-    await api('probation_targets','POST',{period_id:periodId,target_id:targetId,target_name:targetName,evaluator_id:evaluatorId,evaluator_name:evaluatorName,evaluator_type:evalType});
-  } else {
-    await api('leader_assign','POST',{period_id:periodId,target_id:targetId,target_name:targetName,evaluator_id:evaluatorId,evaluator_name:evaluatorName});
+async function addAssign(periodId, type) {
+  // 체크된 대상자들
+  const checkedTargets = [...document.querySelectorAll('.target-checkbox:checked:not(:disabled)')].map(cb=>({id:cb.value, name:cb.dataset.name}));
+  // 선택된 평가자
+  const evaluatorRadio = document.querySelector('.evaluator-radio:checked');
+  if(!checkedTargets.length) return alert('대상자를 선택해주세요.');
+  if(!evaluatorRadio) return alert('평가자를 선택해주세요.');
+  const evaluatorId = evaluatorRadio.value;
+  const evaluatorName = evaluatorRadio.dataset.name;
+
+  const evalType = type==='probation' ? document.getElementById('assign-eval-type')?.value : null;
+
+  for(const target of checkedTargets) {
+    if(type === 'probation') {
+      await api('probation_targets','POST',{period_id:periodId,target_id:target.id,target_name:target.name,evaluator_id:evaluatorId,evaluator_name:evaluatorName,evaluator_type:evalType});
+    } else {
+      await api('leader_assign','POST',{period_id:periodId,target_id:target.id,target_name:target.name,evaluator_id:evaluatorId,evaluator_name:evaluatorName});
+    }
   }
 
   const titleEl = document.getElementById('assign-title').textContent;
