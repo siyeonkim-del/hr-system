@@ -1464,13 +1464,7 @@ async function openAssign(periodId, type, title) {
           })()}
         </div>
 
-        ${type==='probation' ? `
-        <div style="margin-top:12px">
-          <div style="font-size:12px;color:#64748b;margin-bottom:4px;font-weight:600">평가자 유형</div>
-          <select id="assign-eval-type" style="width:100%">
-            ${evalTypeOptions.map(o=>`<option>${o}</option>`).join('')}
-          </select>
-        </div>` : ''}
+
       </div>
 
       <!-- 오른쪽: 평가자 선택 + 지정 목록 -->
@@ -1531,7 +1525,7 @@ async function addAssign(periodId, type) {
   if(!checkedTargets.length) return alert('대상자를 선택해주세요.');
   if(!checkedEvaluators.length) return alert('평가자를 선택해주세요.');
 
-  const evalType = type==='probation' ? document.getElementById('assign-eval-type')?.value : null;
+  const evalType = null; // 평가자 유형 자동 설정 제거
 
   for(const target of checkedTargets) {
     for(const evaluator of checkedEvaluators) {
