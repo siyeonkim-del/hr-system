@@ -17,8 +17,8 @@
   .nav-btn:hover:not(.active) { color: #64748b; }
   .user-card { margin-top: auto; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
 
-  #main { margin-left: 200px; padding: 32px; min-height: 100vh; }
-  .page { display: none; width: 100%; }
+  #main { margin-left: 200px; padding: 32px; min-height: 100vh; box-sizing: border-box; }
+  .page { display: none; width: 100%; padding-top: 0; }
   .page.active { display: block; }
   .page-title { font-size: 24px; font-weight: 900; margin-bottom: 6px; }
   .page-sub { color: #64748b; font-size: 13px; margin-bottom: 24px; }
@@ -904,13 +904,13 @@ async function loadUserAndRoute() {
     // 관리자
     document.getElementById('login-page').style.display='none';
     document.getElementById('employee-page').style.display='none';
-    document.getElementById('admin-page').style.display='flex';
+    document.getElementById('admin-page').style.display='block';
     renderDashboard();
   } else {
     // 직원
     document.getElementById('login-page').style.display='none';
     document.getElementById('admin-page').style.display='none';
-    document.getElementById('employee-page').style.display='flex';
+    document.getElementById('employee-page').style.display='block';
     if(currentEmp) {
       document.getElementById('emp-sidebar-name').textContent = currentEmp.name;
       document.getElementById('emp-sidebar-role').textContent = `${currentEmp.dept} · ${currentEmp.role}`;
@@ -1912,7 +1912,7 @@ initApp();
   <div id="page-holidays" class="page">
     <div class="page-title">공휴일 관리</div>
     <div class="page-sub">공휴일을 등록하면 연차 신청 시 자동으로 제외됩니다</div>
-    <div class="grid2">
+    <div class="grid2" style="margin-top:8px">
       <div class="card" style="align-self:start">
         <div class="card-title">공휴일 등록</div>
         <div style="margin-bottom:10px">
@@ -1933,7 +1933,7 @@ initApp();
   </div>
 
   <!-- 인사평가 관리 -->
-  <div id="page-evaluation" class="page" style="width:100%">
+  <div id="page-evaluation" class="page">
     <div class="page-title">인사평가 관리</div>
     <div class="page-sub">평가 기간을 생성하고 결과를 확인하세요</div>
 
