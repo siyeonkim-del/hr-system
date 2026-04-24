@@ -7,7 +7,7 @@
 <title>Zenith HR 시스템</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: #f8fafc; color: #1e293b; display: flex; min-height: 100vh; }
+  body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: #f8fafc; color: #1e293b; min-height: 100vh; }
 
   #sidebar { width: 200px; background: #ffffff; border-right: 1px solid #e2e8f0; padding: 24px 14px; display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; z-index: 10; }
   #sidebar .logo { font-size: 18px; font-weight: 900; margin-bottom: 4px; }
@@ -17,7 +17,7 @@
   .nav-btn:hover:not(.active) { color: #64748b; }
   .user-card { margin-top: auto; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
 
-  #main { margin-left: 200px; padding: 32px; width: calc(100% - 200px); min-height: 100vh; }
+  #main { margin-left: 200px; padding: 32px; min-height: 100vh; }
   .page { display: none; width: 100%; }
   .page.active { display: block; }
   .page-title { font-size: 24px; font-weight: 900; margin-bottom: 6px; }
@@ -226,7 +226,7 @@
   </div>
 </div>
 
-<div id="admin-page" style="display:none;width:100%;min-height:100vh">
+<div id="admin-page" style="display:none">
 <div id="sidebar">
   <div class="logo" onclick="showPage('dashboard',null)" style="cursor:pointer">ZENITH HR</div>
   <div class="logo-sub" onclick="showPage('dashboard',null)" style="cursor:pointer">PEOPLE PLATFORM</div>
