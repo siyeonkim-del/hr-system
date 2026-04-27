@@ -1590,9 +1590,7 @@ async function deletePeriod(id) {
 
 async function loadPeriodsForFilter(type) {
   const periods = await api(`evaluation_periods?type=eq.${type}&order=created_at.desc`) || [];
-  const filterId = type==='peer' ? 'peer-period-filter' 
-                 : type==='leader' ? 'leader-period-filter' 
-                 : 'probation-period-filter';
+  const filterId = type==='peer' ? 'peer-period-filter' : 'leader-period-filter';
   document.getElementById(filterId).innerHTML = '<option value="">평가 기간 선택</option>' +
     periods.map(p=>`<option value="${p.id}">${p.title} (${p.is_open?'진행중':'종료'})</option>`).join('');
 }
@@ -2059,38 +2057,83 @@ async function renderProbationResults() {
     {key:'basic_1',label:'기본소양1'},{key:'basic_2',label:'기본소양2'},
   ];
 
+  const sectionLabels = {
+    attitude: ['담당 업무에 충실하며 성실한 자세로 근무한다','담당 업무를 자발적이고 의욕적으로 수행한다','팀워크를 중시하며 동료들과의 관계가 원만하다','새로운 업무에 대해 도전하려는 의지가 있다'],
+    ability: ['업무 이해가 빠르며 업무 처리에 점차 능숙함을 보인다','수습 기간에 요구되는 수준의 관련 지식을 갖추고 있다','업무 전달 내용을 정확히 이해하고 지시에 따라 수행한다','업무 진행 현황을 수시로 공유하며, 필요 시 적극 보고한다'],
+    basic: ['출퇴근 시간을 준수하고 사내 규정을 성실히 따른다','매사에 긍정적인 사고와 태도를 가지고 있다'],
+  };
+
   document.getElementById('probation-results-content').innerHTML = Object.entries(grouped).map(([name, evals]) => {
     const avgScore = evals.reduce((sum,e) => {
       const total = scoreKeys.reduce((s,k)=>s+(e[k.key]||0),0);
       return sum + total/scoreKeys.length;
     }, 0) / evals.length;
 
-    return `<div style="margin-bottom:24px;padding:20px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <div style="font-weight:800;font-size:16px">수습사원: ${name}</div>
-        <div style="font-size:22px;font-weight:900;color:#3b82f6">${avgScore.toFixed(1)}점</div>
+    const uid = name.replace(/\s/g,'_');
+
+    return `<div style="margin-bottom:20px;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden">
+      <!-- 헤더 -->
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 20px;background:#f8fafc;cursor:pointer" onclick="toggleProbResult('${uid}')">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="font-weight:800;font-size:16px">${name}</div>
+          <div style="font-size:12px;color:#64748b">${evals.length}명 평가</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="font-size:24px;font-weight:900;color:#3b82f6">${avgScore.toFixed(1)}<span style="font-size:13px;color:#64748b">점</span></div>
+          <span id="arrow-${uid}" style="font-size:18px;color:#64748b">▼</span>
+        </div>
       </div>
-      ${evals.map(e => {
-        const total = scoreKeys.reduce((s,k)=>s+(e[k.key]||0),0)/scoreKeys.length;
-        return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:10px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:12px">
-            <span style="font-weight:700">${e.evaluator_name} <span style="font-size:11px;color:#64748b">(${e.evaluator_type})</span></span>
-            <span style="font-weight:700;color:#3b82f6">${total.toFixed(1)}점</span>
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px">
-            ${['업무태도','업무태도','업무태도','업무태도','업무능력','업무능력','업무능력','업무능력','기본소양','기본소양'].map((cat,i) => {
-              const key = scoreKeys[i].key;
-              const val = e[key]||0;
-              const c = gradeColors[val]||'#64748b';
-              return `<div style="text-align:center;padding:6px;background:${c}15;border-radius:6px;border:1px solid ${c}33">
-                <div style="font-size:14px;font-weight:900;color:${c}">${val}</div>
-                <div style="font-size:9px;color:#64748b;margin-top:2px">${cat}${i%4+1}</div>
-              </div>`;
-            }).join('')}
-          </div>
-          ${e.comment ? `<div style="font-size:12px;color:#64748b;padding:8px;background:#f8fafc;border-radius:6px">${e.comment}</div>` : ''}
-        </div>`;
-      }).join('')}
+
+      <!-- 평가자별 요약 (항상 보임) -->
+      <div style="padding:12px 20px;background:white;border-top:1px solid #f1f5f9;display:flex;gap:8px;flex-wrap:wrap">
+        ${evals.map(e=>{
+          const avg = scoreKeys.reduce((s,k)=>s+(e[k.key]||0),0)/scoreKeys.length;
+          const c = avg>=4?'#10b981':avg>=3?'#3b82f6':avg>=2?'#f59e0b':'#ef4444';
+          return `<div style="padding:6px 12px;background:${c}11;border:1px solid ${c}33;border-radius:20px;font-size:12px">
+            <span style="font-weight:700">${e.evaluator_name}</span>
+            <span style="color:${c};font-weight:800;margin-left:6px">${avg.toFixed(1)}점</span>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <!-- 상세 내용 (클릭시 펼침) -->
+      <div id="detail-${uid}" style="display:none">
+        ${evals.map((e,ei) => {
+          const sections = [
+            {label:'업무태도', keys:['attitude_1','attitude_2','attitude_3','attitude_4'], items: sectionLabels.attitude},
+            {label:'업무능력', keys:['ability_1','ability_2','ability_3','ability_4'], items: sectionLabels.ability},
+            {label:'기본소양', keys:['basic_1','basic_2'], items: sectionLabels.basic},
+          ];
+          const avg = scoreKeys.reduce((s,k)=>s+(e[k.key]||0),0)/scoreKeys.length;
+
+          return `<div style="border-top:1px solid #f1f5f9;padding:20px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+              <div>
+                <span style="font-weight:800;font-size:14px">${e.evaluator_name}</span>
+                ${e.evaluator_type?`<span style="margin-left:8px;font-size:11px;background:#8b5cf615;color:#8b5cf6;padding:2px 8px;border-radius:10px">${e.evaluator_type}</span>`:''}
+              </div>
+              <span style="font-size:18px;font-weight:900;color:#3b82f6">${avg.toFixed(1)}점</span>
+            </div>
+            ${sections.map(sec => `
+              <div style="margin-bottom:16px">
+                <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:8px;padding:4px 10px;background:#f1f5f9;border-radius:6px;display:inline-block">${sec.label}</div>
+                ${sec.keys.map((k,i) => {
+                  const val = e[k]||0;
+                  const c = gradeColors[val]||'#64748b';
+                  const gradeMap = {5:'S',4:'A',3:'B',2:'C',1:'D'};
+                  return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#f8fafc;border-radius:8px;margin-bottom:6px">
+                    <span style="font-size:12px;color:#1e293b;flex:1">${sec.items[i]}</span>
+                    <span style="font-size:14px;font-weight:900;color:${c};background:${c}15;border:1px solid ${c}33;padding:3px 10px;border-radius:8px;min-width:40px;text-align:center;margin-left:12px">${gradeMap[val]||'-'}</span>
+                  </div>`;
+                }).join('')}
+              </div>`).join('')}
+            ${e.comment?`<div style="margin-top:12px;padding:12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px">
+              <div style="font-size:11px;font-weight:700;color:#0369a1;margin-bottom:6px">평가자 의견</div>
+              <div style="font-size:13px;color:#1e293b;line-height:1.6">${e.comment}</div>
+            </div>`:''}
+          </div>`;
+        }).join('')}
+      </div>
     </div>`;
   }).join('');
 }
@@ -2471,6 +2514,18 @@ async function renderAdminLeaveStats() {
       </div>
     </div>
     <div style="font-size:11px;color:#64748b;text-align:center">입사일 기준 자동 계산</div>`;
+}
+
+function toggleProbResult(uid) {
+  const detail = document.getElementById('detail-'+uid);
+  const arrow = document.getElementById('arrow-'+uid);
+  if(detail.style.display==='none') {
+    detail.style.display='block';
+    arrow.textContent='▲';
+  } else {
+    detail.style.display='none';
+    arrow.textContent='▼';
+  }
 }
 
 // 초기 실행
