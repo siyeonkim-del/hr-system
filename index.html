@@ -240,6 +240,7 @@
     <div style="font-size:13px;font-weight:700;margin-top:2px" id="admin-name-display">김시연</div>
     <div style="font-size:11px;color:#3b82f6">경영지원팀 · 인사</div>
     <button onclick="showAdminEvalModal()" style="margin-top:8px;width:100%;padding:5px;border:1px solid #3b82f644;border-radius:6px;background:#3b82f611;cursor:pointer;font-size:11px;color:#3b82f6;font-family:inherit">내 평가 참여</button>
+    <button onclick="showAdminLeaveModal()" style="margin-top:6px;width:100%;padding:5px;border:1px solid #10b98144;border-radius:6px;background:#10b98111;cursor:pointer;font-size:11px;color:#10b981;font-family:inherit">내 휴가 신청</button>
     <button onclick="doLogout()" style="margin-top:6px;width:100%;padding:5px;border:1px solid #e2e8f0;border-radius:6px;background:none;cursor:pointer;font-size:11px;color:#64748b;font-family:inherit">로그아웃</button>
   </div>
 </div>
@@ -2323,6 +2324,148 @@ async function renderAdminProbationEval() {
     ).join('')}`;
 }
 
+// ── 관리자 휴가 신청 ──
+async function showAdminLeaveModal() {
+  document.getElementById('admin-leave-modal').classList.add('open');
+  showAdminLeaveTab('request');
+}
+
+function showAdminLeaveTab(tab) {
+  ['request','history','stats'].forEach(t => {
+    document.getElementById('admin-leave-'+t+'-content').style.display = t===tab?'block':'none';
+    const btn = document.getElementById('altab-'+t);
+    btn.style.color = t===tab?'#10b981':'#64748b';
+    btn.style.borderBottom = t===tab?'2px solid #10b981':'none';
+    btn.style.fontWeight = t===tab?'700':'600';
+  });
+  if(tab==='history') renderAdminLeaveHistory();
+  if(tab==='stats') renderAdminLeaveStats();
+}
+
+function updateAdminLeaveSubtype() {
+  const cat = document.getElementById('admin-lv-category').value;
+  const subWrap = document.getElementById('admin-lv-subtype-wrap');
+  const sub = document.getElementById('admin-lv-subtype');
+  if(cat==='연차') {
+    subWrap.style.display='block';
+    sub.innerHTML='<option value="종일휴가">종일휴가 (1일)</option><option value="오전휴가">오전휴가 (0.5일)</option><option value="오후휴가">오후휴가 (0.5일)</option>';
+  } else if(cat==='건강검진휴가') {
+    subWrap.style.display='block';
+    sub.innerHTML='<option value="오전휴가">오전휴가</option><option value="오후휴가">오후휴가</option>';
+  } else if(cat==='기타휴가') {
+    subWrap.style.display='block';
+    sub.innerHTML='<option value="공가">공가</option><option value="보건휴가">보건휴가</option><option value="출산휴가">출산휴가</option><option value="난임치료휴가">난임치료휴가</option><option value="배우자 출산휴가">배우자 출산휴가</option><option value="가족돌봄휴가">가족돌봄휴가</option><option value="유사산휴가">유사산휴가</option>';
+  } else {
+    subWrap.style.display='none';
+  }
+  updateAdminDeductInfo();
+}
+
+function updateAdminDeductInfo() {
+  const cat = document.getElementById('admin-lv-category').value;
+  const sub = document.getElementById('admin-lv-subtype')?.value;
+  const info = document.getElementById('admin-lv-deduct-info');
+  if(cat==='연차' && (sub==='오전휴가'||sub==='오후휴가')) {
+    info.textContent='⏰ 0.5일 차감됩니다.'; info.style.display='block';
+  } else if(cat==='연차') {
+    info.textContent='📅 1일 차감됩니다.'; info.style.display='block';
+  } else if(cat==='경조휴가'||cat==='기타휴가'||cat==='건강검진휴가') {
+    info.textContent='✅ 연차에서 차감되지 않습니다.'; info.style.display='block';
+  } else {
+    info.style.display='none';
+  }
+}
+
+async function submitAdminLeave() {
+  if(!currentEmp) return alert('직원 정보를 찾을 수 없어요.');
+  const cat = document.getElementById('admin-lv-category').value;
+  const subWrap = document.getElementById('admin-lv-subtype-wrap');
+  const subVal = subWrap.style.display!=='none' ? document.getElementById('admin-lv-subtype').value : '';
+  const type = subVal ? `${cat} - ${subVal}` : cat;
+  const from_date = document.getElementById('admin-lv-from').value;
+  const to_date = document.getElementById('admin-lv-to').value;
+  const reason = document.getElementById('admin-lv-reason').value;
+  if(!from_date||!to_date) return alert('시작일과 종료일을 입력해주세요.');
+
+  if(subVal==='오전휴가'||subVal==='오후휴가') {
+    if(from_date!==to_date) return alert('오전/오후휴가는 하루만 신청 가능합니다.');
+  }
+  if(cat==='기타휴가'&&subVal==='보건휴가') {
+    const d1=new Date(from_date),d2=new Date(to_date);
+    if(Math.ceil((d2-d1)/86400000)+1>1) return alert('보건휴가는 월 1일 신청 가능합니다.');
+    const fromMonth=from_date.slice(0,7);
+    const existing=await api(`leave_requests?employee_id=eq.${currentEmp.id}&type=eq.기타휴가 - 보건휴가&status=neq.취소`)||[];
+    if(existing.filter(l=>l.from_date&&l.from_date.startsWith(fromMonth)).length>0)
+      return alert(`${fromMonth.slice(0,4)}년 ${fromMonth.slice(5,7)}월 보건휴가를 이미 사용했어요.`);
+  }
+
+  await loadHolidays();
+  let days = 0;
+  if(cat==='연차') {
+    days = (subVal==='오전휴가'||subVal==='오후휴가') ? 0.5 : calcWorkingDays(from_date,to_date);
+  }
+
+  await api('leave_requests','POST',{
+    employee_id:currentEmp.id, employee_name:currentEmp.name,
+    type, from_date, to_date, days, reason, status:'승인'
+  });
+  document.getElementById('admin-lv-from').value='';
+  document.getElementById('admin-lv-to').value='';
+  document.getElementById('admin-lv-reason').value='';
+  alert('휴가 신청이 완료되었습니다!');
+  showAdminLeaveTab('history');
+}
+
+async function renderAdminLeaveHistory() {
+  if(!currentEmp) return;
+  const leaves = await api(`leave_requests?employee_id=eq.${currentEmp.id}&order=from_date.desc`)||[];
+  const today = new Date(); today.setHours(0,0,0,0);
+  document.getElementById('admin-leave-list').innerHTML = leaves.length ? leaves.map(l=>{
+    const c=statusColors[l.status]||'#64748b';
+    const fromDate=new Date(l.from_date); fromDate.setHours(0,0,0,0);
+    const canCancel = fromDate>=today && l.status!=='취소';
+    return `<div style="background:#f8fafc;border-radius:10px;padding:12px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-weight:700;font-size:13px">${l.type}</span>
+        <span class="badge" style="background:${c}22;color:${c};border:1px solid ${c}44">${l.status}</span>
+      </div>
+      <div style="font-size:12px;color:#64748b">${l.from_date} ~ ${l.to_date}</div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:2px">${l.reason||''}</div>
+      ${canCancel?`<button onclick="cancelAdminLeave('${l.id}')" style="margin-top:8px;padding:3px 10px;border:1px solid #ef444433;border-radius:6px;background:none;color:#ef4444;font-size:11px;cursor:pointer">취소</button>`:''}
+    </div>`;
+  }).join(''):'<div class="empty">신청한 휴가가 없어요</div>';
+}
+
+async function cancelAdminLeave(id) {
+  if(!confirm('휴가를 취소하시겠어요?')) return;
+  await api(`leave_requests?id=eq.${id}`,'PATCH',{status:'취소'});
+  renderAdminLeaveHistory();
+}
+
+async function renderAdminLeaveStats() {
+  if(!currentEmp) return;
+  const total = calcAnnualLeave(currentEmp.join_date);
+  const leaves = await api(`leave_requests?employee_id=eq.${currentEmp.id}&status=eq.승인`)||[];
+  const used = leaves.reduce((sum,l)=>sum+(l.days||1),0);
+  const remaining = Math.max(0,total-used);
+  document.getElementById('admin-leave-stats-box').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+      <div style="background:#f5f3ff;border-radius:12px;padding:20px;text-align:center">
+        <div style="font-size:28px;font-weight:900;color:#8b5cf6">${total}</div>
+        <div style="font-size:12px;color:#64748b;margin-top:6px">발생</div>
+      </div>
+      <div style="background:#fef9ec;border-radius:12px;padding:20px;text-align:center">
+        <div style="font-size:28px;font-weight:900;color:#f59e0b">${used}</div>
+        <div style="font-size:12px;color:#64748b;margin-top:6px">사용</div>
+      </div>
+      <div style="background:#f0fdf4;border-radius:12px;padding:20px;text-align:center">
+        <div style="font-size:28px;font-weight:900;color:#10b981">${remaining}</div>
+        <div style="font-size:12px;color:#64748b;margin-top:6px">잔여</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#64748b;text-align:center">입사일 기준 자동 계산</div>`;
+}
+
 // 초기 실행
 initApp();
 </script>
@@ -2386,6 +2529,54 @@ initApp();
     <div id="admin-eval-leader-content" style="display:none"></div>
     <div id="admin-eval-probation-content" style="display:none"></div>
     <button class="btn btn-gray" style="width:100%;margin-top:16px" onclick="closeModal('admin-eval-modal')">닫기</button>
+  </div>
+</div>
+
+<!-- 관리자 휴가 신청 모달 -->
+<div class="modal-bg" id="admin-leave-modal" onclick="closeModal('admin-leave-modal')">
+  <div class="modal" onclick="event.stopPropagation()" style="width:600px;max-height:85vh;overflow-y:auto">
+    <h3>내 휴가 신청</h3>
+    <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:2px solid #e2e8f0;padding-bottom:0">
+      <button id="altab-request" onclick="showAdminLeaveTab('request')" style="padding:8px 16px;border:none;background:none;font-size:13px;font-weight:700;color:#10b981;border-bottom:2px solid #10b981;margin-bottom:-2px;cursor:pointer;font-family:inherit">휴가 신청</button>
+      <button id="altab-history" onclick="showAdminLeaveTab('history')" style="padding:8px 16px;border:none;background:none;font-size:13px;font-weight:600;color:#64748b;cursor:pointer;font-family:inherit">신청 내역</button>
+      <button id="altab-stats" onclick="showAdminLeaveTab('stats')" style="padding:8px 16px;border:none;background:none;font-size:13px;font-weight:600;color:#64748b;cursor:pointer;font-family:inherit">연차 현황</button>
+    </div>
+    <!-- 휴가 신청 -->
+    <div id="admin-leave-request-content">
+      <div style="margin-bottom:10px">
+        <div style="font-size:12px;color:#64748b;margin-bottom:4px">휴가 구분</div>
+        <select id="admin-lv-category" style="width:100%" onchange="updateAdminLeaveSubtype()">
+          <option value="연차">연차</option>
+          <option value="경조휴가">경조휴가</option>
+          <option value="기타휴가">기타휴가</option>
+          <option value="건강검진휴가">건강검진휴가</option>
+        </select>
+      </div>
+      <div style="margin-bottom:10px" id="admin-lv-subtype-wrap">
+        <div style="font-size:12px;color:#64748b;margin-bottom:4px">세부 종류</div>
+        <select id="admin-lv-subtype" style="width:100%" onchange="updateAdminDeductInfo()">
+          <option value="종일휴가">종일휴가 (1일)</option>
+          <option value="오전휴가">오전휴가 (0.5일)</option>
+          <option value="오후휴가">오후휴가 (0.5일)</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">시작일</div><input type="date" id="admin-lv-from" style="width:100%"></div>
+        <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">종료일</div><input type="date" id="admin-lv-to" style="width:100%"></div>
+      </div>
+      <div style="margin-bottom:10px"><div style="font-size:12px;color:#64748b;margin-bottom:4px">사유</div><input type="text" id="admin-lv-reason" placeholder="사유를 입력하세요" style="width:100%"></div>
+      <div id="admin-lv-deduct-info" style="font-size:11px;color:#8b5cf6;padding:6px 10px;background:#f5f3ff;border-radius:6px;margin-bottom:10px;display:none"></div>
+      <button class="btn btn-primary" style="width:100%;padding:10px" onclick="submitAdminLeave()">신청하기</button>
+    </div>
+    <!-- 신청 내역 -->
+    <div id="admin-leave-history-content" style="display:none">
+      <div id="admin-leave-list"><div class="loading">로딩 중...</div></div>
+    </div>
+    <!-- 연차 현황 -->
+    <div id="admin-leave-stats-content" style="display:none">
+      <div id="admin-leave-stats-box"></div>
+    </div>
+    <button class="btn btn-gray" style="width:100%;margin-top:16px" onclick="closeModal('admin-leave-modal')">닫기</button>
   </div>
 </div>
 </body>
