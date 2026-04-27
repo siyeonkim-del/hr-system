@@ -1188,6 +1188,11 @@ async function submitMyLeave() {
   const reason = document.getElementById('my-lv-reason').value;
   if(!from_date||!to_date) return alert('시작일과 종료일을 입력해주세요.');
 
+  // 당일/과거 일자 신청 불가
+  const today = new Date(); today.setHours(0,0,0,0);
+  const fromDateObj = new Date(from_date);
+  if(fromDateObj <= today) return alert('당일 및 과거 일자는 휴가 신청이 불가합니다.\n내일 이후 날짜로 신청해주세요.');
+
   // 오전/오후 휴가는 하루만 신청 가능
   if(subVal==='오전휴가' || subVal==='오후휴가') {
     if(from_date !== to_date) {
