@@ -1590,7 +1590,9 @@ async function deletePeriod(id) {
 
 async function loadPeriodsForFilter(type) {
   const periods = await api(`evaluation_periods?type=eq.${type}&order=created_at.desc`) || [];
-  const filterId = type==='peer' ? 'peer-period-filter' : 'leader-period-filter';
+  const filterId = type==='peer' ? 'peer-period-filter' 
+                 : type==='leader' ? 'leader-period-filter' 
+                 : 'probation-period-filter';
   document.getElementById(filterId).innerHTML = '<option value="">평가 기간 선택</option>' +
     periods.map(p=>`<option value="${p.id}">${p.title} (${p.is_open?'진행중':'종료'})</option>`).join('');
 }
