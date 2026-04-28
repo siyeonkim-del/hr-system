@@ -238,8 +238,11 @@
   <div class="logo" onclick="showPage('dashboard',null)" style="cursor:pointer">ZENITH HR</div>
   <div class="logo-sub" onclick="showPage('dashboard',null)" style="cursor:pointer">PEOPLE PLATFORM</div>
   <button class="nav-btn" onclick="showPage('employees',this)">직원 관리</button>
-  <button class="nav-btn" onclick="showPage('leave',this)">휴가·근태</button>
-  <button class="nav-btn" onclick="showPage('my-leave-admin',this)">내 휴가</button>
+  <button class="nav-btn" id="nav-leave-parent" onclick="toggleLeaveSubMenu(this)">휴가·근태 ▾</button>
+  <div id="leave-submenu" style="display:none;margin-left:12px;margin-bottom:2px">
+    <button class="nav-btn" id="nav-leave-manage" onclick="showPage('leave',this)" style="font-size:12px;padding:7px 10px">휴가 관리</button>
+    <button class="nav-btn" id="nav-leave-mine" onclick="showPage('my-leave-admin',this)" style="font-size:12px;padding:7px 10px">휴가 신청</button>
+  </div>
   <button class="nav-btn" onclick="showPage('holidays',this)">공휴일 관리</button>
   <button class="nav-btn" onclick="showPage('evaluation',this)">인사평가</button>
   <button class="nav-btn" onclick="showPage('org',this)">조직도</button>
@@ -653,6 +656,21 @@ function avatarEl(name, dept, size=40) {
   return '';
 }
 
+function toggleLeaveSubMenu(parentBtn) {
+  const sub = document.getElementById('leave-submenu');
+  const isOpen = sub.style.display !== 'none';
+  sub.style.display = isOpen ? 'none' : 'block';
+  parentBtn.textContent = isOpen ? '휴가·근태 ▾' : '휴가·근태 ▴';
+  // 서브메뉴 열릴 때 부모 버튼 active 스타일
+  if(!isOpen) {
+    parentBtn.classList.add('active');
+  } else {
+    parentBtn.classList.remove('active');
+    document.getElementById('nav-leave-manage')?.classList.remove('active');
+    document.getElementById('nav-leave-mine')?.classList.remove('active');
+  }
+}
+
 function showPage(id, btn) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
@@ -666,6 +684,13 @@ function showPage(id, btn) {
   if(id==='holidays') renderHolidays();
   if(id==='evaluation') { showEvalTab('periods'); }
   if(id==='my-leave-admin') { showAdminMyLeaveTab('request'); }
+  // 휴가 관련 페이지면 서브메뉴 자동 펼침
+  if(id==='leave' || id==='my-leave-admin') {
+    const sub = document.getElementById('leave-submenu');
+    const parent = document.getElementById('nav-leave-parent');
+    if(sub) { sub.style.display='block'; }
+    if(parent) { parent.textContent='휴가·근태 ▴'; parent.classList.add('active'); }
+  }
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
