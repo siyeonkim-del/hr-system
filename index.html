@@ -1738,7 +1738,7 @@ async function renderLeaderEval() {
     </div>
     <div style="margin-bottom:16px">
       <div style="font-size:12px;color:#64748b;margin-bottom:4px;font-weight:600">평가 대상자 선택</div>
-      <select id="leader-target" style="width:100%;max-width:300px" onchange="renderLeaderForm('${period.id}')">
+      <select id="leader-target" style="width:100%;max-width:300px" onchange="renderLeaderForm('${period.id}',${JSON.stringify(submitted)})">
         <option value="">선택해주세요</option>
         ${otherEmps.map(e=>`<option value="${e.id}" data-name="${e.name}" ${submittedTargetIds.includes(String(e.id))?'disabled':''}>
           ${e.name} (${e.dept}) ${submittedTargetIds.includes(String(e.id))?'✅ 완료':''}
@@ -1748,11 +1748,54 @@ async function renderLeaderEval() {
     <div id="leader-form-area"></div>`;
 }
 
-function renderLeaderForm(periodId) {
+function renderLeaderForm(periodId, submittedList) {
   const targetSel = document.getElementById('leader-target');
   const targetId = targetSel.value;
   const targetName = targetSel.options[targetSel.selectedIndex]?.dataset?.name || '';
   if(!targetId) { document.getElementById('leader-form-area').innerHTML=''; return; }
+
+  // 이미 제출한 대상자면 내 제출 내용 표시
+  const mySubmit = (submittedList||[]).find(s=>String(s.target_id)===String(targetId));
+  if(mySubmit) {
+    const scoreLabels = {score_performance:'업무 성과',score_responsibility:'책임감',score_collaboration:'협업/커뮤니케이션',score_growth:'자기 계발',score_attitude:'근무 태도'};
+    document.getElementById('leader-form-area').innerHTML = `
+      <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+          <span style="background:#f0fdf4;color:#16a34a;padding:5px 14px;border-radius:20px;font-size:13px;font-weight:700">✅ 제출 완료</span>
+          <span style="font-size:14px;font-weight:700;color:#1e293b">${targetName} 평가 내역</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px">
+          ${Object.entries(scoreLabels).map(([key,label])=>`
+            <div style="text-align:center;padding:12px 8px;background:#f0f9ff;border-radius:10px;border:1px solid #bae6fd">
+              <div style="font-size:24px;font-weight:900;color:#3b82f6">${mySubmit[key]||'-'}</div>
+              <div style="font-size:10px;color:#64748b;margin-top:4px">${label}</div>
+            </div>`).join('')}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          ${mySubmit.contribution ? `<div style="padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0">
+            <span style="font-size:11px;font-weight:700;color:#64748b">기여도</span>
+            <span style="margin-left:10px;font-size:13px;font-weight:600">${mySubmit.contribution}</span>
+          </div>` : ''}
+          ${mySubmit.evidence ? `<div style="padding:10px 14px;background:#f0f9ff;border-radius:8px;border:1px solid #bae6fd">
+            <div style="font-size:11px;font-weight:700;color:#0369a1;margin-bottom:4px">평가 근거</div>
+            <div style="font-size:13px;color:#1e293b">${mySubmit.evidence}</div>
+          </div>` : ''}
+          ${mySubmit.strength ? `<div style="padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0">
+            <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:4px">강점</div>
+            <div style="font-size:13px;color:#1e293b">${mySubmit.strength}</div>
+          </div>` : ''}
+          ${mySubmit.growth_potential ? `<div style="padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0">
+            <span style="font-size:11px;font-weight:700;color:#64748b">성장 가능성</span>
+            <span style="margin-left:10px;font-size:13px;font-weight:600">${mySubmit.growth_potential}</span>
+          </div>` : ''}
+          ${mySubmit.improvement ? `<div style="padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0">
+            <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:4px">개선점</div>
+            <div style="font-size:13px;color:#1e293b">${mySubmit.improvement}</div>
+          </div>` : ''}
+        </div>
+      </div>`;
+    return;
+  }
 
   const scoreItems = [
     {key:'score_performance',label:'업무 성과',desc:'업무 목표를 명확히 이해하고 성과를 달성한다'},
@@ -1801,6 +1844,7 @@ function renderLeaderForm(periodId) {
         <div style="font-size:12px;color:#64748b;margin-bottom:4px">향후 성장 가능성은 어느 정도일까요? <span style="color:#ef4444">*</span></div>
         <select id="ldr-growth-potential" style="width:100%">
           <option value="">선택해주세요</option>
+          <option value="매우 높음">매우 높음</option>
           <option value="높음">높음</option>
           <option value="보통">보통</option>
           <option value="낮음">낮음</option>
