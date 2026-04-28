@@ -250,13 +250,17 @@
     <button class="nav-btn" id="nav-eval-peer" onclick="showEvalPageTab('peer-results',this)" style="font-size:12px;padding:7px 10px">상호평가 결과</button>
     <button class="nav-btn" id="nav-eval-leader" onclick="showEvalPageTab('leader-results',this)" style="font-size:12px;padding:7px 10px">리더평가 결과</button>
     <button class="nav-btn" id="nav-eval-probation" onclick="showEvalPageTab('probation-results',this)" style="font-size:12px;padding:7px 10px">수습평가 결과</button>
+    <div style="height:1px;background:#e2e8f0;margin:4px 8px"></div>
+    <button class="nav-btn" id="nav-eval-join-peer" onclick="openAdminEvalDirect('peer',this)" style="font-size:12px;padding:7px 10px">상호평가</button>
+    <button class="nav-btn" id="nav-eval-join-leader" onclick="openAdminEvalDirect('leader',this)" style="font-size:12px;padding:7px 10px">리더평가</button>
+    <button class="nav-btn" id="nav-eval-join-probation" onclick="openAdminEvalDirect('probation',this)" style="font-size:12px;padding:7px 10px">수습평가</button>
   </div>
   <button class="nav-btn" onclick="showPage('org',this)">조직도</button>
   <div class="user-card">
     <div style="font-size:11px;color:#64748b">관리자</div>
     <div style="font-size:13px;font-weight:700;margin-top:2px" id="admin-name-display">김시연</div>
     <div style="font-size:11px;color:#3b82f6">경영지원팀 · 인사</div>
-    <button onclick="showAdminEvalModal()" style="margin-top:8px;width:100%;padding:5px;border:1px solid #3b82f644;border-radius:6px;background:#3b82f611;cursor:pointer;font-size:11px;color:#3b82f6;font-family:inherit">내 평가 참여</button>
+
 
     <button onclick="doLogout()" style="margin-top:6px;width:100%;padding:5px;border:1px solid #e2e8f0;border-radius:6px;background:none;cursor:pointer;font-size:11px;color:#64748b;font-family:inherit">로그아웃</button>
   </div>
@@ -660,6 +664,21 @@ function getInitials(name) { return (name||'??').slice(0,2); }
 
 function avatarEl(name, dept, size=40) {
   return '';
+}
+
+function openAdminEvalDirect(tab, btn) {
+  // 인사평가 페이지로 이동 + 서브메뉴 활성화
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-evaluation').classList.add('active');
+  const sub = document.getElementById('eval-submenu');
+  const parent = document.getElementById('nav-eval-parent');
+  if(sub) sub.style.display='block';
+  if(parent) { parent.textContent='인사평가 ▴'; parent.classList.add('active'); }
+  if(btn) btn.classList.add('active');
+  // 관리자 평가 참여 모달 열고 해당 탭으로
+  showAdminEvalModal();
+  showAdminEvalTab(tab);
 }
 
 function toggleEvalSubMenu(parentBtn) {
