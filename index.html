@@ -244,7 +244,13 @@
     <button class="nav-btn" id="nav-leave-mine" onclick="showPage('my-leave-admin',this)" style="font-size:12px;padding:7px 10px">휴가 신청</button>
   </div>
   <button class="nav-btn" onclick="showPage('holidays',this)">공휴일 관리</button>
-  <button class="nav-btn" onclick="showPage('evaluation',this)">인사평가</button>
+  <button class="nav-btn" id="nav-eval-parent" onclick="toggleEvalSubMenu(this)">인사평가 ▾</button>
+  <div id="eval-submenu" style="display:none;margin-left:12px;margin-bottom:2px">
+    <button class="nav-btn" id="nav-eval-periods" onclick="showEvalPageTab('periods',this)" style="font-size:12px;padding:7px 10px">평가 기간 관리</button>
+    <button class="nav-btn" id="nav-eval-peer" onclick="showEvalPageTab('peer-results',this)" style="font-size:12px;padding:7px 10px">상호평가 결과</button>
+    <button class="nav-btn" id="nav-eval-leader" onclick="showEvalPageTab('leader-results',this)" style="font-size:12px;padding:7px 10px">리더평가 결과</button>
+    <button class="nav-btn" id="nav-eval-probation" onclick="showEvalPageTab('probation-results',this)" style="font-size:12px;padding:7px 10px">수습평가 결과</button>
+  </div>
   <button class="nav-btn" onclick="showPage('org',this)">조직도</button>
   <div class="user-card">
     <div style="font-size:11px;color:#64748b">관리자</div>
@@ -656,6 +662,36 @@ function avatarEl(name, dept, size=40) {
   return '';
 }
 
+function toggleEvalSubMenu(parentBtn) {
+  const sub = document.getElementById('eval-submenu');
+  const isOpen = sub.style.display !== 'none';
+  sub.style.display = isOpen ? 'none' : 'block';
+  parentBtn.textContent = isOpen ? '인사평가 ▾' : '인사평가 ▴';
+  if(!isOpen) {
+    parentBtn.classList.add('active');
+  } else {
+    parentBtn.classList.remove('active');
+    ['nav-eval-periods','nav-eval-peer','nav-eval-leader','nav-eval-probation'].forEach(id => {
+      document.getElementById(id)?.classList.remove('active');
+    });
+  }
+}
+
+function showEvalPageTab(tab, btn) {
+  // 인사평가 페이지로 이동 후 해당 탭 활성화
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-evaluation').classList.add('active');
+  // 서브메뉴 펼침
+  const sub = document.getElementById('eval-submenu');
+  const parent = document.getElementById('nav-eval-parent');
+  if(sub) sub.style.display='block';
+  if(parent) { parent.textContent='인사평가 ▴'; parent.classList.add('active'); }
+  if(btn) btn.classList.add('active');
+  // 해당 탭 활성화
+  showEvalTab(tab);
+}
+
 function toggleLeaveSubMenu(parentBtn) {
   const sub = document.getElementById('leave-submenu');
   const isOpen = sub.style.display !== 'none';
@@ -690,6 +726,12 @@ function showPage(id, btn) {
     const parent = document.getElementById('nav-leave-parent');
     if(sub) { sub.style.display='block'; }
     if(parent) { parent.textContent='휴가·근태 ▴'; parent.classList.add('active'); }
+  }
+  if(id==='evaluation') {
+    const sub = document.getElementById('eval-submenu');
+    const parent = document.getElementById('nav-eval-parent');
+    if(sub) { sub.style.display='block'; }
+    if(parent) { parent.textContent='인사평가 ▴'; parent.classList.add('active'); }
   }
 }
 
