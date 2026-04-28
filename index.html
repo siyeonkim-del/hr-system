@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Zenith HR 시스템</title>
 <style>
@@ -308,8 +309,17 @@
 
   <!-- 휴가·근태 -->
   <div id="page-leave" class="page">
-    <div class="page-title">휴가 · 근태 관리</div>
-    <div class="page-sub">신청 현황 및 연차 관리</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div class="page-title">휴가 · 근태 관리</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-gray" onclick="downloadLeaveTemplate()" style="font-size:12px">📥 엑셀 양식 다운로드</button>
+        <label class="btn btn-primary" style="font-size:12px;cursor:pointer;margin:0;display:inline-flex;align-items:center;gap:4px">
+          📤 엑셀 일괄 업로드
+          <input type="file" id="leave-excel-input" accept=".xlsx,.xls" style="display:none" onchange="handleLeaveExcel(this)">
+        </label>
+      </div>
+    </div>
+    <div class="page-sub">신청 현황 및 연차 관리 · 엑셀로 사용내역/연차현황 일괄 반영 가능</div>
     <div class="grid2">
       <div>
         <div class="card">
@@ -2557,6 +2567,240 @@ function toggleProbResult(uid) {
   }
 }
 
+
+// ── 휴가 엑셀 업로드 ──
+function downloadLeaveTemplate() {
+  if(typeof XLSX === 'undefined') return alert('라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.');
+  const wb = XLSX.utils.book_new();
+
+  // 시트1: 휴가 사용 내역
+  const ws1 = XLSX.utils.aoa_to_sheet([
+    ['[작성 안내] 직원명은 시스템에 등록된 이름과 정확히 일치해야 합니다. 상태는 승인/대기/반려 중 입력하세요.'],
+    [],
+    ['직원명', '휴가종류', '시작일', '종료일', '일수', '사유', '상태'],
+    ['홍길동', '연차 - 종일휴가', '2026-05-01', '2026-05-02', '2', '개인 사유', '승인'],
+    ['김철수', '연차 - 오전휴가', '2026-05-05', '2026-05-05', '0.5', '병원', '승인'],
+    ['이영희', '경조휴가', '2026-05-10', '2026-05-10', '1', '결혼', '승인'],
+  ]);
+  ws1['!cols'] = [12,20,12,12,6,20,8].map(w=>({wch:w}));
+  ws1['!merges'] = [{s:{r:0,c:0},e:{r:0,c:6}}];
+  XLSX.utils.book_append_sheet(wb, ws1, '휴가사용내역');
+
+  // 시트2: 연차 부여/잔여 현황 (수동 override)
+  const ws2 = XLSX.utils.aoa_to_sheet([
+    ['[작성 안내] 직원별로 총 부여일수와 사용일수를 입력하면 잔여가 자동 계산됩니다. leave_requests에 일괄 반영됩니다.'],
+    [],
+    ['직원명', '부여일수(총)', '이미사용일수'],
+    ['홍길동', '15', '3'],
+    ['김철수', '11', '1'],
+  ]);
+  ws2['!cols'] = [12,14,14].map(w=>({wch:w}));
+  ws2['!merges'] = [{s:{r:0,c:0},e:{r:0,c:2}}];
+  XLSX.utils.book_append_sheet(wb, ws2, '연차현황');
+
+  XLSX.writeFile(wb, '휴가관리_업로드양식.xlsx');
+}
+
+async function handleLeaveExcel(input) {
+  const file = input.files[0];
+  if(!file) return;
+  if(typeof XLSX === 'undefined') return alert('라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.');
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
+      let leaveRows = [], annualRows = [];
+
+      // 시트1: 휴가 사용 내역
+      const ws1 = wb.Sheets['휴가사용내역'] || wb.Sheets[wb.SheetNames[0]];
+      if(ws1) {
+        const raw = XLSX.utils.sheet_to_json(ws1, {defval:'', range:2}); // row3부터 (안내+빈줄 건너뜀)
+        leaveRows = raw.map(r => ({
+          employee_name: String(r['직원명']||'').trim(),
+          type:          String(r['휴가종류']||'').trim(),
+          from_date:     formatExcelDate(r['시작일']),
+          to_date:       formatExcelDate(r['종료일']),
+          days:          parseFloat(r['일수'])||1,
+          reason:        String(r['사유']||'').trim(),
+          status:        String(r['상태']||'승인').trim(),
+        })).filter(r => r.employee_name && r.from_date && r.type);
+      }
+
+      // 시트2: 연차 현황
+      const ws2 = wb.Sheets['연차현황'] || wb.Sheets[wb.SheetNames[1]];
+      if(ws2) {
+        const raw2 = XLSX.utils.sheet_to_json(ws2, {defval:'', range:2});
+        annualRows = raw2.map(r => ({
+          employee_name: String(r['직원명']||'').trim(),
+          total:         parseFloat(r['부여일수(총)'])||0,
+          used:          parseFloat(r['이미사용일수'])||0,
+        })).filter(r => r.employee_name && r.total);
+      }
+
+      if(!leaveRows.length && !annualRows.length) return alert('유효한 데이터가 없어요. 양식을 확인해주세요.');
+      showLeaveExcelPreview(leaveRows, annualRows);
+    } catch(err) {
+      alert('파일을 읽는 중 오류가 발생했어요: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  input.value = '';
+}
+
+function formatExcelDate(val) {
+  if(!val) return '';
+  if(val instanceof Date) {
+    const y = val.getFullYear();
+    const m = String(val.getMonth()+1).padStart(2,'0');
+    const d = String(val.getDate()).padStart(2,'0');
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(val).trim();
+  const match = s.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if(match) return `${match[1]}-${match[2].padStart(2,'0')}-${match[3].padStart(2,'0')}`;
+  return s;
+}
+
+function showLeaveExcelPreview(leaveRows, annualRows) {
+  const leaveErrors  = leaveRows.filter(r  => !allEmployees.find(e=>e.name===r.employee_name));
+  const leaveValid   = leaveRows.filter(r  =>  allEmployees.find(e=>e.name===r.employee_name));
+  const annualErrors = annualRows.filter(r => !allEmployees.find(e=>e.name===r.employee_name));
+  const annualValid  = annualRows.filter(r =>  allEmployees.find(e=>e.name===r.employee_name));
+
+  // 오류 메시지
+  let errHtml = '';
+  const allErrors = [...new Set([...leaveErrors.map(r=>r.employee_name), ...annualErrors.map(r=>r.employee_name)])];
+  if(allErrors.length) {
+    errHtml = `<div style="color:#ef4444;font-size:12px;padding:8px 12px;background:#fff5f5;border-radius:8px;margin-bottom:12px">
+      ⚠️ 직원명 불일치로 제외: <b>${allErrors.join(', ')}</b>
+    </div>`;
+  }
+
+  // 휴가 사용 내역 테이블
+  let leaveTableHtml = '';
+  if(leaveRows.length) {
+    leaveTableHtml = `
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:#3b82f6">📋 휴가 사용 내역 (${leaveValid.length}건 반영 예정${leaveErrors.length ? ', '+leaveErrors.length+'건 제외' : ''})</div>
+      <div style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:16px">
+        <table style="width:100%;border-collapse:collapse;min-width:500px">
+          <thead>
+            <tr style="background:#f8fafc">
+              ${['직원명','휴가종류','시작일','종료일','일수','사유','상태'].map(h=>`<th style="padding:8px 10px;text-align:left;font-size:11px;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap">${h}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${leaveRows.map(r => {
+              const isErr = !allEmployees.find(e=>e.name===r.employee_name);
+              const sc = {승인:'#10b981',대기:'#f59e0b',반려:'#ef4444'}[r.status]||'#64748b';
+              return `<tr style="background:${isErr?'#fff5f5':'white'}">
+                <td style="padding:8px 10px;font-size:12px;font-weight:600;color:${isErr?'#ef4444':'#1e293b'};border-bottom:1px solid #f1f5f9">${r.employee_name}${isErr?' ⚠️':''}</td>
+                <td style="padding:8px 10px;font-size:11px;color:#64748b;border-bottom:1px solid #f1f5f9">${r.type}</td>
+                <td style="padding:8px 10px;font-size:12px;border-bottom:1px solid #f1f5f9">${r.from_date}</td>
+                <td style="padding:8px 10px;font-size:12px;border-bottom:1px solid #f1f5f9">${r.to_date}</td>
+                <td style="padding:8px 10px;font-size:12px;text-align:center;border-bottom:1px solid #f1f5f9">${r.days}</td>
+                <td style="padding:8px 10px;font-size:11px;color:#64748b;border-bottom:1px solid #f1f5f9">${r.reason}</td>
+                <td style="padding:8px 10px;border-bottom:1px solid #f1f5f9"><span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:${sc}15;color:${sc}">${r.status}</span></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  // 연차 현황 테이블
+  let annualTableHtml = '';
+  if(annualRows.length) {
+    annualTableHtml = `
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:#8b5cf6">📊 연차 현황 반영 (${annualValid.length}명${annualErrors.length ? ', '+annualErrors.length+'명 제외' : ''})</div>
+      <div style="font-size:11px;color:#64748b;margin-bottom:8px">※ '이미사용일수'만큼 leave_requests에 조정 항목이 생성됩니다.</div>
+      <div style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:16px">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:#f8fafc">
+              ${['직원명','부여일수','사용일수','잔여(계산)'].map(h=>`<th style="padding:8px 10px;text-align:left;font-size:11px;color:#64748b;border-bottom:1px solid #e2e8f0">${h}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${annualRows.map(r => {
+              const isErr = !allEmployees.find(e=>e.name===r.employee_name);
+              const remain = Math.max(0, r.total - r.used);
+              return `<tr style="background:${isErr?'#fff5f5':'white'}">
+                <td style="padding:8px 10px;font-size:12px;font-weight:600;color:${isErr?'#ef4444':'#1e293b'};border-bottom:1px solid #f1f5f9">${r.employee_name}${isErr?' ⚠️':''}</td>
+                <td style="padding:8px 10px;font-size:12px;color:#8b5cf6;font-weight:700;border-bottom:1px solid #f1f5f9">${r.total}일</td>
+                <td style="padding:8px 10px;font-size:12px;color:#f59e0b;font-weight:700;border-bottom:1px solid #f1f5f9">${r.used}일</td>
+                <td style="padding:8px 10px;font-size:12px;color:${remain>0?'#10b981':'#ef4444'};font-weight:700;border-bottom:1px solid #f1f5f9">${remain}일</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  document.getElementById('leave-excel-preview-content').innerHTML = errHtml + leaveTableHtml + annualTableHtml;
+
+  // 반영하기 버튼에 데이터 바인딩
+  document.getElementById('leave-excel-confirm-btn').onclick = () => confirmLeaveExcel(leaveValid, annualValid);
+  document.getElementById('leave-excel-modal').classList.add('open');
+}
+
+async function confirmLeaveExcel(leaveRows, annualRows) {
+  const total = leaveRows.length + annualRows.length;
+  if(!total) return alert('반영할 데이터가 없어요.');
+
+  const btn = document.getElementById('leave-excel-confirm-btn');
+  btn.textContent = '반영 중...';
+  btn.disabled = true;
+
+  let count = 0;
+  // 휴가 사용 내역 저장
+  for(const r of leaveRows) {
+    const emp = allEmployees.find(e=>e.name===r.employee_name);
+    if(!emp) continue;
+    await api('leave_requests','POST',{
+      employee_id:   emp.id,
+      employee_name: emp.name,
+      type:          r.type,
+      from_date:     r.from_date,
+      to_date:       r.to_date,
+      days:          r.days,
+      reason:        r.reason || '엑셀 일괄 업로드',
+      status:        r.status || '승인',
+    });
+    count++;
+  }
+
+  // 연차 현황 반영: 기존 조정 항목 삭제 후 새로 생성
+  for(const r of annualRows) {
+    const emp = allEmployees.find(e=>e.name===r.employee_name);
+    if(!emp) continue;
+    // 기존 엑셀 조정 항목 삭제
+    await api(`leave_requests?employee_id=eq.${emp.id}&reason=eq.엑셀 연차현황 조정`, 'DELETE');
+    if(r.used > 0) {
+      // 사용일수를 단일 조정 항목으로 저장
+      const today = new Date().toISOString().slice(0,10);
+      await api('leave_requests','POST',{
+        employee_id:   emp.id,
+        employee_name: emp.name,
+        type:          '연차',
+        from_date:     today,
+        to_date:       today,
+        days:          r.used,
+        reason:        '엑셀 연차현황 조정',
+        status:        '승인',
+      });
+    }
+    count++;
+  }
+
+  closeModal('leave-excel-modal');
+  btn.textContent = '반영하기';
+  btn.disabled = false;
+  renderLeave();
+  alert(`총 ${count}건이 반영되었습니다!`);
+}
+
+
 // 초기 실행
 initApp();
 </script>
@@ -2670,5 +2914,21 @@ initApp();
     <button class="btn btn-gray" style="width:100%;margin-top:16px" onclick="closeModal('admin-leave-modal')">닫기</button>
   </div>
 </div>
+
+<!-- 휴가 엑셀 업로드 미리보기 모달 -->
+<div class="modal-bg" id="leave-excel-modal" onclick="closeModal('leave-excel-modal')">
+  <div class="modal" onclick="event.stopPropagation()" style="width:760px;max-height:88vh;overflow-y:auto">
+    <h3>📤 엑셀 업로드 미리보기</h3>
+    <div style="font-size:12px;color:#64748b;margin-bottom:16px;padding:8px 12px;background:#f8fafc;border-radius:8px">
+      확인 후 <b>반영하기</b>를 누르면 Supabase에 저장됩니다. 취소하면 아무것도 저장되지 않아요.
+    </div>
+    <div id="leave-excel-preview-content"></div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button id="leave-excel-confirm-btn" class="btn btn-primary" style="flex:1;padding:10px;font-size:14px">반영하기</button>
+      <button class="btn btn-gray" style="padding:10px 20px" onclick="closeModal('leave-excel-modal')">취소</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
