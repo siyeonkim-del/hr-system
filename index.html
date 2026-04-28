@@ -1717,9 +1717,11 @@ async function renderLeaderEval() {
   const submittedTargetIds = submitted.map(s=>s.target_id);
   const assigned = await api(`leader_assign?period_id=eq.${period.id}&evaluator_id=eq.${currentEmp.id}`) || [];
   const assignedTargetIds = assigned.map(a=>a.target_id);
-  const otherEmps = assignedTargetIds.length
-    ? allEmployees.filter(e=>assignedTargetIds.includes(e.id))
-    : allEmployees.filter(e=>e.id !== currentEmp.id);
+  if(!assignedTargetIds.length) {
+    document.getElementById('leader-eval-content').innerHTML = '<div class="empty">배정된 평가 대상자가 없어요.<br>관리자에게 문의해주세요.</div>';
+    return;
+  }
+  const otherEmps = allEmployees.filter(e=>assignedTargetIds.includes(e.id));
   const scoreItems = [
     {key:'score_performance',label:'업무 성과',desc:'업무 목표를 명확히 이해하고 성과를 달성한다'},
     {key:'score_responsibility',label:'책임감',desc:'주어진 업무를 끝까지 수행하며 일정을 준수한다'},
@@ -2313,7 +2315,11 @@ async function renderAdminLeaderEval() {
   const submitted = await api(`leader_evaluations?period_id=eq.${period.id}&evaluator_id=eq.${emp.id}`) || [];
   const submittedTargetIds = submitted.map(s=>s.target_id);
   const assigned = await api(`leader_assign?period_id=eq.${period.id}&evaluator_id=eq.${emp.id}`) || [];
-  const targets = assigned.length ? allEmployees.filter(e=>assigned.map(a=>a.target_id).includes(e.id)) : allEmployees.filter(e=>e.id!==emp.id);
+  if(!assigned.length) {
+    document.getElementById('admin-eval-leader-content').innerHTML = '<div class="empty">배정된 평가 대상자가 없어요.</div>';
+    return;
+  }
+  const targets = allEmployees.filter(e=>assigned.map(a=>a.target_id).includes(e.id));
 
   document.getElementById('admin-eval-leader-content').innerHTML = `
     <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:12px;margin-bottom:16px">
