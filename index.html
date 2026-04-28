@@ -630,7 +630,7 @@ async function renderDashboard() {
     return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1e2a42">
       <div>
         <div style="font-size:13px;font-weight:600">${emp?.name||l.employee_name||'알 수 없음'}</div>
-        <div style="font-size:11px;color:#64748b">${l.type||''} · ${l.from_date||''}</div>
+        <div style="font-size:11px;color:#64748b">${l.type||''} · ${l.from_date||''} ~ ${l.to_date||''}</div>
       </div>
       <span class="badge" style="background:${c}22;color:${c};border:1px solid ${c}44">${l.status}</span>
     </div>`;
