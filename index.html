@@ -771,6 +771,12 @@ async function setLeave(id,status) {
   await api(`leave_requests?id=eq.${id}`,'PATCH',{status}); renderLeave();
 }
 
+async function deleteLeave(id) {
+  if(!confirm('이 휴가 내역을 삭제하시겠어요?')) return;
+  await api(`leave_requests?id=eq.${id}`,'DELETE');
+  renderLeave();
+}
+
 function updateLeaveTypeInfo() {
   const type = document.getElementById('lv-type').value;
   const empId = document.getElementById('lv-emp').value;
