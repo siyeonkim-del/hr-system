@@ -98,6 +98,12 @@
   .login-btn { width:100%; padding:12px; background:#1e293b; color:white; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:4px; }
   .login-btn:hover { background:#334155; }
   .login-error { color:#ef4444; font-size:12px; margin-top:8px; text-align:center; min-height:18px; }
+
+  /* 수습평가 결과 개선 스타일 */
+  .prob-score-ring { position:relative; display:inline-flex; align-items:center; justify-content:center; }
+  .prob-section-bar { height:8px; border-radius:4px; background:#e2e8f0; overflow:hidden; margin-top:4px; }
+  .prob-section-bar-fill { height:100%; border-radius:4px; transition:width 0.6s ease; }
+  .prob-grade-chip { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:6px; font-size:12px; font-weight:800; }
 </style>
 </head>
 <body>
@@ -759,35 +765,9 @@ function updateLeaveTypeInfo() {
   const type = document.getElementById('lv-type').value;
   const empId = document.getElementById('lv-emp').value;
   const infoEl = document.getElementById('lv-type-info');
-  if(!empId) { infoEl.style.display='none'; return; }
+  if(!empId) { if(infoEl) infoEl.style.display='none'; return; }
   const emp = allEmployees.find(e=>e.id===empId);
-  if(!emp||!emp.join_date) { infoEl.style.display='none'; return; }
-
-  const join = new Date(emp.join_date);
-  const today = new Date();
-  const oneYear = new Date(join); oneYear.setFullYear(oneYear.getFullYear()+1);
-  const isUnderOneYear = today < oneYear;
-
-  const total = calcAnnualLeave(emp.join_date);
-  if(type==='월차(1년미만)') {
-    if(!isUnderOneYear) {
-      infoEl.style.cssText='font-size:11px;color:#ef4444;margin-bottom:8px;padding:6px 10px;background:#fef2f2;border-radius:6px;display:block';
-      infoEl.textContent='⚠️ 1년 이상 근무자는 월차를 사용할 수 없어요.';
-    } else {
-      infoEl.style.cssText='font-size:11px;color:#8b5cf6;margin-bottom:8px;padding:6px 10px;background:#f5f3ff;border-radius:6px;display:block';
-      infoEl.textContent=`✓ 1년 미만 월차 사용 가능 (부여 ${total}일)`;
-    }
-  } else if(type==='연차(1년이상)') {
-    if(isUnderOneYear) {
-      infoEl.style.cssText='font-size:11px;color:#ef4444;margin-bottom:8px;padding:6px 10px;background:#fef2f2;border-radius:6px;display:block';
-      infoEl.textContent='⚠️ 1년 미만 근무자는 연차를 사용할 수 없어요.';
-    } else {
-      infoEl.style.cssText='font-size:11px;color:#3b82f6;margin-bottom:8px;padding:6px 10px;background:#eff6ff;border-radius:6px;display:block';
-      infoEl.textContent=`✓ 연차 사용 가능 (부여 ${total}일)`;
-    }
-  } else {
-    infoEl.style.display='none';
-  }
+  if(!emp||!emp.join_date) { if(infoEl) infoEl.style.display='none'; return; }
 }
 
 async function addLeave() {
@@ -822,9 +802,7 @@ async function renderOrg() {
     if(e.dept){if(!deptGroups[e.dept])deptGroups[e.dept]=[];deptGroups[e.dept].push(e);}
   });
 
-  // 순서 적용 (저장된 순서 or 기본)
   let orderedDepts = deptOrder ? deptOrder.filter(d=>deptGroups[d]) : Object.keys(deptGroups);
-  // 새로 추가된 부서는 뒤에 추가
   Object.keys(deptGroups).forEach(d=>{ if(!orderedDepts.includes(d)) orderedDepts.push(d); });
 
   document.getElementById('org-legend').innerHTML=orderedDepts.map(d=>`
@@ -941,9 +919,6 @@ async function saveEmployee() {
   alert(`${name}님 정보가 수정되었습니다!`);
 }
 
-
-// 연차 계산 함수
-// 규칙: 1년 미만 매월 1개(최대 11개) + 1년 초과시 15개 추가 + 3년차부터 2년마다 1개 추가
 function calcAnnualLeave(joinDateStr) {
   if(!joinDateStr) return 15;
   const join = new Date(joinDateStr);
@@ -953,7 +928,6 @@ function calcAnnualLeave(joinDateStr) {
   const oneYearDate = new Date(join);
   oneYearDate.setFullYear(oneYearDate.getFullYear() + 1);
 
-  // 1년 미만 연차: 매월 1개, 최대 11개
   let monthlyLeave = 0;
   for(let m = 1; m <= 11; m++) {
     const earnDate = new Date(join);
@@ -963,10 +937,8 @@ function calcAnnualLeave(joinDateStr) {
   monthlyLeave = Math.min(monthlyLeave, 11);
 
   if(today < oneYearDate) {
-    // 1년 미만: 월별 연차만
     return monthlyLeave;
   } else {
-    // 1년 이상: 월별 11개 + 매년 15개 + 3년차부터 2년마다 1개 추가
     const years = today.getFullYear() - join.getFullYear() -
       ((today.getMonth() < join.getMonth() ||
        (today.getMonth() === join.getMonth() && today.getDate() < join.getDate())) ? 1 : 0);
@@ -978,7 +950,6 @@ function calcAnnualLeave(joinDateStr) {
     return 11 + annualLeave;
   }
 }
-
 
 // ── AUTH ──
 const ADMIN_EMAIL = 'siyeon.kim@zenithcompany.net';
@@ -1024,25 +995,21 @@ async function doLogin() {
 }
 
 async function loadUserAndRoute() {
-  // 직원 정보 찾기
   const emps = await api('employees?select=*');
   allEmployees = emps||[];
   currentEmp = allEmployees.find(e=>e.email===currentUser.email);
 
-  // Update admin name display
   if(currentEmp) {
     const nameEl = document.getElementById('admin-name-display');
     if(nameEl) nameEl.textContent = currentEmp.name;
   }
 
   if(currentUser.email === ADMIN_EMAIL) {
-    // 관리자
     document.getElementById('login-page').style.display='none';
     document.getElementById('employee-page').style.display='none';
     document.getElementById('admin-page').style.display='block';
     renderDashboard();
   } else {
-    // 직원
     document.getElementById('login-page').style.display='none';
     document.getElementById('admin-page').style.display='none';
     document.getElementById('employee-page').style.display='block';
@@ -1102,7 +1069,6 @@ function renderMyInfo() {
     </div>
     <div style="font-size:11px;color:#64748b">입사일 기준 자동 계산</div>`;
 
-  // 사용 연차 계산
   api(`leave_requests?employee_id=eq.${currentEmp.id}&status=eq.승인`).then(leaves=>{
     const used = (leaves||[]).reduce((sum,l)=>sum+(l.days||1),0);
     const remaining = Math.max(0, total - used);
@@ -1188,37 +1154,30 @@ async function submitMyLeave() {
   const reason = document.getElementById('my-lv-reason').value;
   if(!from_date||!to_date) return alert('시작일과 종료일을 입력해주세요.');
 
-  // 당일/과거 일자 신청 불가
   const today = new Date(); today.setHours(0,0,0,0);
   const fromDateObj = new Date(from_date);
   if(fromDateObj <= today) return alert('당일 및 과거 일자는 휴가 신청이 불가합니다.\n내일 이후 날짜로 신청해주세요.');
 
-  // 오전/오후 휴가는 하루만 신청 가능
   if(subVal==='오전휴가' || subVal==='오후휴가') {
     if(from_date !== to_date) {
       return alert('오전휴가/오후휴가는 하루만 신청 가능합니다. 시작일과 종료일을 같은 날로 설정해주세요.');
     }
   }
 
-  // 보건휴가 월 1일 제한 체크
   if(cat==='기타휴가' && subVal==='보건휴가') {
-    // 신청 기간이 하루인지 체크
     const d1 = new Date(from_date), d2 = new Date(to_date);
     const diffDays = Math.ceil((d2-d1)/86400000)+1;
     if(diffDays > 1) {
       return alert('보건휴가는 월 1일 신청 가능합니다.');
     }
-    // 같은 달에 이미 사용했는지 체크
     const fromMonth = from_date.slice(0,7);
     const existing = await api(`leave_requests?employee_id=eq.${currentEmp.id}&type=eq.기타휴가 - 보건휴가&status=neq.취소`);
     const usedThisMonth = (existing||[]).filter(l=>l.from_date&&l.from_date.startsWith(fromMonth));
     if(usedThisMonth.length > 0) {
-      return alert(`${fromMonth.slice(0,4)}년 ${fromMonth.slice(5,7)}월에 이미 보건휴가를 사용했어요.
-보건휴가는 월 1일만 사용 가능합니다.`);
+      return alert(`${fromMonth.slice(0,4)}년 ${fromMonth.slice(5,7)}월에 이미 보건휴가를 사용했어요.\n보건휴가는 월 1일만 사용 가능합니다.`);
     }
   }
 
-  // 차감 일수 계산 (주말+공휴일 제외)
   await loadHolidays();
   let days = 0;
   if(cat==='연차') {
@@ -1226,7 +1185,7 @@ async function submitMyLeave() {
       days = calcWorkingDays(from_date, to_date);
     } else { days = 0.5; }
   } else if(cat==='건강검진휴가') {
-    days = 0; // 차감 없음
+    days = 0;
   }
 
   await api('leave_requests','POST',{employee_id:currentEmp.id,employee_name:currentEmp.name,type,from_date,to_date,days,reason,status:'승인'});
@@ -1346,7 +1305,6 @@ async function deleteHoliday(id) {
   renderHolidays();
 }
 
-// 실제 차감일수 계산 (주말+공휴일 제외)
 function calcWorkingDays(from_date, to_date) {
   let count = 0;
   const cur = new Date(from_date);
@@ -1416,7 +1374,6 @@ async function openAssign(periodId, type, title) {
   document.getElementById('assign-title').textContent = `[${title}] 대상자 및 평가자 지정`;
   document.getElementById('assign-section').scrollIntoView({behavior:'smooth'});
 
-  // 기존 지정 목록
   const table = type === 'probation' ? 'probation_targets' : 'leader_assign';
   let existing = [];
   if(type === 'probation') {
@@ -1425,17 +1382,10 @@ async function openAssign(periodId, type, title) {
     existing = await api(`leader_assign?period_id=eq.${periodId}`) || [];
   }
 
-  const evalTypeOptions = type === 'probation'
-    ? ['1차(셀프)','2차(부팀장)','3차(팀장)']
-    : [];
-
-  // 이미 지정된 대상자 ID 목록
   const existingTargetIds = existing.map(a=>a.target_id);
 
   document.getElementById('assign-content').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-
-      <!-- 왼쪽: 대상자 선택 -->
       <div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
           <div style="font-size:14px;font-weight:700">평가 대상자 선택</div>
@@ -1462,18 +1412,15 @@ async function openAssign(periodId, type, title) {
                     <div>
                       <span style="font-size:13px;font-weight:600">${e.name}</span>
                       <span style="font-size:11px;color:#64748b;margin-left:6px">${e.role}</span>
-                      ${existingTargetIds.includes(e.id)?'<span style="font-size:10px;color:#10b981;margin-left:4px">✓ 지정됨</span>':''} 
+                      ${existingTargetIds.includes(e.id)?'<span style="font-size:10px;color:#10b981;margin-left:4px">✓ 지정됨</span>':''}
                     </div>
                   </label>`).join('')}
               </div>`;
             }).join('');
           })()}
         </div>
-
-
       </div>
 
-      <!-- 오른쪽: 평가자 선택 + 지정 목록 -->
       <div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
           <div style="font-size:14px;font-weight:700">평가자 선택 <span style="font-size:11px;color:#64748b;font-weight:400">(복수 선택 가능)</span></div>
@@ -1485,7 +1432,7 @@ async function openAssign(periodId, type, title) {
         <div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;max-height:200px;overflow-y:auto;margin-bottom:12px">
           ${allEmployees.filter(e=>e.leader_role).map(e=>`
             <label style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #f1f5f9;cursor:pointer" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
-              <input type="checkbox" class="evaluator-checkbox" value="${e.id}" data-name="${e.name}" style="width:16px;height:16px;cursor:pointer">
+              <input type="checkbox" class="evaluator-checkbox" value="${e.id}" data-name="${e.name}" data-leader-role="${e.leader_role||''}" style="width:16px;height:16px;cursor:pointer">
               <div>
                 <div style="font-size:13px;font-weight:600">${e.name} <span style="font-size:11px;background:#3b82f615;color:#3b82f6;padding:1px 6px;border-radius:8px">${e.leader_role}</span></div>
                 <div style="font-size:11px;color:#64748b">${e.dept} · ${e.role}</div>
@@ -1523,21 +1470,29 @@ function toggleAllTargets(checked) {
   document.querySelectorAll('.target-checkbox:not(:disabled)').forEach(cb => cb.checked = checked);
 }
 
+// ★ 수정 1: evalType null 버그 수정 ★
 async function addAssign(periodId, type) {
-  // 체크된 대상자들
   const checkedTargets = [...document.querySelectorAll('.target-checkbox:checked:not(:disabled)')].map(cb=>({id:cb.value, name:cb.dataset.name}));
-  // 체크된 평가자들 (복수)
-  const checkedEvaluators = [...document.querySelectorAll('.evaluator-checkbox:checked')].map(cb=>({id:cb.value, name:cb.dataset.name}));
+  const checkedEvaluators = [...document.querySelectorAll('.evaluator-checkbox:checked')].map(cb=>({
+    id: cb.value,
+    name: cb.dataset.name,
+    leaderRole: cb.dataset.leaderRole || ''
+  }));
   if(!checkedTargets.length) return alert('대상자를 선택해주세요.');
   if(!checkedEvaluators.length) return alert('평가자를 선택해주세요.');
 
-  const evalType = null; // 평가자 유형 자동 설정 제거
+  // 평가자 유형을 leader_role 기반으로 자동 결정
+  const roleToEvalType = (leaderRole) => {
+    if(leaderRole === '대표' || leaderRole === '팀장') return '3차(팀장)';
+    if(leaderRole === '부팀장') return '2차(부팀장)';
+    return '평가자';
+  };
 
   for(const target of checkedTargets) {
     for(const evaluator of checkedEvaluators) {
+      const evalType = roleToEvalType(evaluator.leaderRole); // ← null 대신 실제 유형
       if(type === 'probation') {
         await api('probation_targets','POST',{period_id:periodId,target_id:target.id,target_name:target.name,evaluator_id:evaluator.id,evaluator_name:evaluator.name,evaluator_type:evalType});
-        // 대상자 본인도 셀프평가자로 자동 추가
         const alreadySelf = await api(`probation_targets?period_id=eq.${periodId}&target_id=eq.${target.id}&evaluator_id=eq.${target.id}`);
         if(!alreadySelf || alreadySelf.length === 0) {
           await api('probation_targets','POST',{period_id:periodId,target_id:target.id,target_name:target.name,evaluator_id:target.id,evaluator_name:target.name,evaluator_type:'1차(셀프)'});
@@ -1590,8 +1545,8 @@ async function deletePeriod(id) {
 
 async function loadPeriodsForFilter(type) {
   const periods = await api(`evaluation_periods?type=eq.${type}&order=created_at.desc`) || [];
-  const filterId = type==='peer' ? 'peer-period-filter' 
-                 : type==='leader' ? 'leader-period-filter' 
+  const filterId = type==='peer' ? 'peer-period-filter'
+                 : type==='leader' ? 'leader-period-filter'
                  : 'probation-period-filter';
   document.getElementById(filterId).innerHTML = '<option value="">평가 기간 선택</option>' +
     periods.map(p=>`<option value="${p.id}">${p.title} (${p.is_open?'진행중':'종료'})</option>`).join('');
@@ -1603,7 +1558,6 @@ async function renderPeerResults() {
   const results = await api(`peer_evaluations?period_id=eq.${periodId}&order=created_at.desc`) || [];
   if(!results.length) { document.getElementById('peer-results-content').innerHTML='<div class="empty">제출된 평가가 없어요</div>'; return; }
 
-  // 대상자별 그룹핑
   const grouped = {};
   results.forEach(r => {
     if(!grouped[r.target_name]) grouped[r.target_name] = [];
@@ -1666,7 +1620,6 @@ async function renderPeerEval() {
   }
 
   const period = periods[0];
-  // 이미 제출했는지 확인
   const submitted = await api(`peer_evaluations?period_id=eq.${period.id}&evaluator_id=eq.${currentEmp.id}`) || [];
   const submittedTargets = submitted.map(s=>s.target_id);
 
@@ -1738,10 +1691,8 @@ async function renderLeaderEval() {
   const period = periods[0];
   const submitted = await api(`leader_evaluations?period_id=eq.${period.id}&evaluator_id=eq.${currentEmp.id}`) || [];
   const submittedTargetIds = submitted.map(s=>s.target_id);
-  // Get assigned targets for this evaluator
   const assigned = await api(`leader_assign?period_id=eq.${period.id}&evaluator_id=eq.${currentEmp.id}`) || [];
   const assignedTargetIds = assigned.map(a=>a.target_id);
-  // Show assigned targets, or all if none assigned
   const otherEmps = assignedTargetIds.length
     ? allEmployees.filter(e=>assignedTargetIds.includes(e.id))
     : allEmployees.filter(e=>e.id !== currentEmp.id);
@@ -1864,10 +1815,8 @@ async function submitLeaderEval(periodId, targetId, targetName) {
   const growth_potential = document.getElementById('ldr-growth-potential').value;
   const improvement = document.getElementById('ldr-improvement').value.trim();
 
-  const strength_val = document.getElementById('ldr-strength').value.trim();
-  const improvement_val = document.getElementById('ldr-improvement').value.trim();
-  if(!strength_val) return alert('강점은 필수 항목입니다.');
-  if(!improvement_val) return alert('개선점은 필수 항목입니다.');
+  if(!strength) return alert('강점은 필수 항목입니다.');
+  if(!improvement) return alert('개선점은 필수 항목입니다.');
   await api('leader_evaluations','POST',{
     period_id:periodId, evaluator_id:currentEmp.id, evaluator_name:currentEmp.name,
     target_id:targetId, target_name:targetName,
@@ -1911,11 +1860,9 @@ async function renderProbationEval() {
   }
 
   const period = periods[0];
-  // 이 평가 기간에서 평가해야 할 대상자 찾기 (이미 제출 여부 확인)
   const submitted = await api(`probation_evaluations?period_id=eq.${period.id}&evaluator_id=eq.${currentEmp.id}`) || [];
   const submittedTargetIds = submitted.map(s=>s.target_id);
 
-  // 이 평가자에게 배정된 대상자만
   const targets = await api(`probation_targets?period_id=eq.${period.id}&evaluator_id=eq.${currentEmp.id}`) || [];
 
   if(!targets.length) {
@@ -1923,7 +1870,6 @@ async function renderProbationEval() {
     return;
   }
 
-  // 이미 제출한 평가 내용
   const mySubmissions = await api(`probation_evaluations?period_id=eq.${period.id}&evaluator_id=eq.${currentEmp.id}&order=created_at.desc`) || [];
 
   document.getElementById('probation-eval-content').innerHTML = `
@@ -1970,7 +1916,9 @@ function renderProbationForm(periodId, targetId, targetName, evaluatorType) {
   ];
 
   return `
-    <div style="font-size:12px;color:#8b5cf6;font-weight:600;margin-bottom:16px">평가자 유형: ${evaluatorType}</div>
+    <div style="font-size:12px;color:#8b5cf6;font-weight:600;margin-bottom:16px;padding:6px 12px;background:#f5f3ff;border-radius:8px;display:inline-block">
+      평가자 유형: ${evaluatorType || '평가자'}
+    </div>
     ${sections.map(sec => `
       <div style="margin-bottom:20px">
         <div style="font-weight:700;font-size:14px;color:#1e293b;margin-bottom:10px;padding:8px 12px;background:#f1f5f9;border-radius:8px">${sec.label}</div>
@@ -2040,7 +1988,7 @@ async function submitProbationEval(periodId, targetId, targetName) {
   renderProbationEval();
 }
 
-// 관리자 - 수습평가 결과
+// ★ 수정 2: 수습평가 결과 UI 전면 개선 (100점 환산 + 가독성) ★
 async function renderProbationResults() {
   const periodId = document.getElementById('probation-period-filter').value;
   if(!periodId) { document.getElementById('probation-results-content').innerHTML='<div class="empty">평가 기간을 선택해주세요</div>'; return; }
@@ -2053,11 +2001,9 @@ async function renderProbationResults() {
     grouped[r.target_name].push(r);
   });
 
-  const scoreKeys = [
-    {key:'attitude_1',label:'업무태도1'},{key:'attitude_2',label:'업무태도2'},{key:'attitude_3',label:'업무태도3'},{key:'attitude_4',label:'업무태도4'},
-    {key:'ability_1',label:'업무능력1'},{key:'ability_2',label:'업무능력2'},{key:'ability_3',label:'업무능력3'},{key:'ability_4',label:'업무능력4'},
-    {key:'basic_1',label:'기본소양1'},{key:'basic_2',label:'기본소양2'},
-  ];
+  const scoreKeys = ['attitude_1','attitude_2','attitude_3','attitude_4','ability_1','ability_2','ability_3','ability_4','basic_1','basic_2'];
+  // 10항목 × 5점 = 50점 만점 → ×2 = 100점 환산
+  const toScore100 = (rawSum) => Math.round(rawSum * 2);
 
   const sectionLabels = {
     attitude: ['담당 업무에 충실하며 성실한 자세로 근무한다','담당 업무를 자발적이고 의욕적으로 수행한다','팀워크를 중시하며 동료들과의 관계가 원만하다','새로운 업무에 대해 도전하려는 의지가 있다'],
@@ -2065,73 +2011,155 @@ async function renderProbationResults() {
     basic: ['출퇴근 시간을 준수하고 사내 규정을 성실히 따른다','매사에 긍정적인 사고와 태도를 가지고 있다'],
   };
 
-  document.getElementById('probation-results-content').innerHTML = Object.entries(grouped).map(([name, evals]) => {
-    const avgScore = evals.reduce((sum,e) => {
-      const total = scoreKeys.reduce((s,k)=>s+(e[k.key]||0),0);
-      return sum + total/scoreKeys.length;
-    }, 0) / evals.length;
+  const getScoreColor = (score100) => {
+    if(score100 >= 90) return '#10b981';
+    if(score100 >= 75) return '#3b82f6';
+    if(score100 >= 60) return '#f59e0b';
+    return '#ef4444';
+  };
 
+  const getGradeLabel = (score100) => {
+    if(score100 >= 90) return 'S';
+    if(score100 >= 75) return 'A';
+    if(score100 >= 60) return 'B';
+    if(score100 >= 45) return 'C';
+    return 'D';
+  };
+
+  document.getElementById('probation-results-content').innerHTML = Object.entries(grouped).map(([name, evals]) => {
+    // 100점 기준 평균 계산
+    const evalScores100 = evals.map(e => toScore100(scoreKeys.reduce((s,k)=>s+(e[k]||0),0)));
+    const avgScore100 = Math.round(evalScores100.reduce((a,b)=>a+b,0) / evalScores100.length);
+    const avgColor = getScoreColor(avgScore100);
+    const avgGrade = getGradeLabel(avgScore100);
     const uid = name.replace(/\s/g,'_');
 
-    return `<div style="margin-bottom:20px;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden">
-      <!-- 헤더 -->
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 20px;background:#f8fafc;cursor:pointer" onclick="toggleProbResult('${uid}')">
-        <div style="display:flex;align-items:center;gap:12px">
-          <div style="font-weight:800;font-size:16px">${name}</div>
-          <div style="font-size:12px;color:#64748b">${evals.length}명 평가</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px">
-          <div style="font-size:24px;font-weight:900;color:#3b82f6">${avgScore.toFixed(1)}<span style="font-size:13px;color:#64748b">점</span></div>
-          <span id="arrow-${uid}" style="font-size:18px;color:#64748b">▼</span>
-        </div>
-      </div>
+    // 섹션별 평균 100점 환산
+    const sectionAvg = (keys) => {
+      const maxPerSection = keys.length * 5;
+      const rawAvg = evals.reduce((sum,e) => sum + keys.reduce((s,k)=>s+(e[k]||0),0),0) / evals.length;
+      return Math.round(rawAvg / maxPerSection * 100);
+    };
+    const attitudeScore = sectionAvg(['attitude_1','attitude_2','attitude_3','attitude_4']);
+    const abilityScore = sectionAvg(['ability_1','ability_2','ability_3','ability_4']);
+    const basicScore = sectionAvg(['basic_1','basic_2']);
 
-      <!-- 평가자별 요약 (항상 보임) -->
-      <div style="padding:12px 20px;background:white;border-top:1px solid #f1f5f9;display:flex;gap:8px;flex-wrap:wrap">
-        ${evals.map(e=>{
-          const avg = scoreKeys.reduce((s,k)=>s+(e[k.key]||0),0)/scoreKeys.length;
-          const c = avg>=4?'#10b981':avg>=3?'#3b82f6':avg>=2?'#f59e0b':'#ef4444';
-          return `<div style="padding:6px 12px;background:${c}11;border:1px solid ${c}33;border-radius:20px;font-size:12px">
-            <span style="font-weight:700">${e.evaluator_name}</span>
-            <span style="color:${c};font-weight:800;margin-left:6px">${avg.toFixed(1)}점</span>
-          </div>`;
-        }).join('')}
-      </div>
+    return `<div style="margin-bottom:24px;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;background:white">
 
-      <!-- 상세 내용 (클릭시 펼침) -->
-      <div id="detail-${uid}" style="display:none">
-        ${evals.map((e,ei) => {
-          const sections = [
-            {label:'업무태도', keys:['attitude_1','attitude_2','attitude_3','attitude_4'], items: sectionLabels.attitude},
-            {label:'업무능력', keys:['ability_1','ability_2','ability_3','ability_4'], items: sectionLabels.ability},
-            {label:'기본소양', keys:['basic_1','basic_2'], items: sectionLabels.basic},
-          ];
-          const avg = scoreKeys.reduce((s,k)=>s+(e[k.key]||0),0)/scoreKeys.length;
-
-          return `<div style="border-top:1px solid #f1f5f9;padding:20px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-              <div>
-                <span style="font-weight:800;font-size:14px">${e.evaluator_name}</span>
-                ${e.evaluator_type?`<span style="margin-left:8px;font-size:11px;background:#8b5cf615;color:#8b5cf6;padding:2px 8px;border-radius:10px">${e.evaluator_type}</span>`:''}
-              </div>
-              <span style="font-size:18px;font-weight:900;color:#3b82f6">${avg.toFixed(1)}점</span>
+      <!-- ── 헤더: 이름 + 종합 점수 ── -->
+      <div style="padding:20px 24px;background:linear-gradient(135deg,${avgColor}08,${avgColor}15);border-bottom:1px solid ${avgColor}22">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-weight:900;font-size:18px;color:#1e293b">${name}</div>
+            <div style="font-size:12px;color:#64748b;margin-top:3px">${evals.length}명 평가 완료</div>
+          </div>
+          <!-- 종합 점수 박스 -->
+          <div style="text-align:center">
+            <div style="font-size:11px;color:#64748b;margin-bottom:4px;font-weight:600">종합 점수</div>
+            <div style="display:flex;align-items:baseline;gap:4px;justify-content:center">
+              <span style="font-size:40px;font-weight:900;color:${avgColor};line-height:1">${avgScore100}</span>
+              <span style="font-size:16px;color:#94a3b8;font-weight:600">/100</span>
             </div>
-            ${sections.map(sec => `
-              <div style="margin-bottom:16px">
-                <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:8px;padding:4px 10px;background:#f1f5f9;border-radius:6px;display:inline-block">${sec.label}</div>
+            <div style="margin-top:6px;display:inline-block;padding:3px 14px;border-radius:20px;background:${avgColor};color:white;font-size:13px;font-weight:800">${avgGrade}등급</div>
+          </div>
+        </div>
+
+        <!-- 섹션별 점수 바 -->
+        <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+          ${[
+            {label:'업무태도', score:attitudeScore, color:'#3b82f6'},
+            {label:'업무능력', score:abilityScore, color:'#8b5cf6'},
+            {label:'기본소양', score:basicScore, color:'#10b981'},
+          ].map(s=>`
+            <div style="background:white;border-radius:10px;padding:10px 14px;border:1px solid ${s.color}22">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <span style="font-size:11px;font-weight:700;color:#64748b">${s.label}</span>
+                <span style="font-size:14px;font-weight:900;color:${s.color}">${s.score}<span style="font-size:10px;color:#94a3b8">/100</span></span>
+              </div>
+              <div style="height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden">
+                <div style="height:100%;width:${s.score}%;background:${s.color};border-radius:3px;transition:width 0.6s ease"></div>
+              </div>
+            </div>`).join('')}
+        </div>
+
+        <!-- 평가자별 요약 칩 -->
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          ${evals.map((e,i)=>{
+            const s100 = evalScores100[i];
+            const c = getScoreColor(s100);
+            return `<div style="padding:5px 12px;background:white;border:1.5px solid ${c}44;border-radius:20px;font-size:12px;display:flex;align-items:center;gap:6px">
+              ${e.evaluator_type ? `<span style="font-size:10px;background:${c}15;color:${c};padding:1px 6px;border-radius:8px;font-weight:700">${e.evaluator_type}</span>` : ''}
+              <span style="font-weight:700;color:#1e293b">${e.evaluator_name}</span>
+              <span style="font-weight:900;color:${c}">${s100}점</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- ── 펼치기 버튼 ── -->
+      <div style="padding:0;cursor:pointer;border-bottom:1px solid #f1f5f9" onclick="toggleProbResult('${uid}')">
+        <div style="display:flex;justify-content:center;align-items:center;padding:10px;gap:6px;font-size:12px;color:#64748b;font-weight:600">
+          <span id="arrow-label-${uid}">▼ 상세 평가 내용 보기</span>
+        </div>
+      </div>
+
+      <!-- ── 상세 내용 ── -->
+      <div id="detail-${uid}" style="display:none">
+        ${evals.map((e, ei) => {
+          const rawSum = scoreKeys.reduce((s,k)=>s+(e[k]||0),0);
+          const s100 = toScore100(rawSum);
+          const sColor = getScoreColor(s100);
+
+          const sections = [
+            {label:'업무태도', keys:['attitude_1','attitude_2','attitude_3','attitude_4'], items: sectionLabels.attitude, color:'#3b82f6'},
+            {label:'업무능력', keys:['ability_1','ability_2','ability_3','ability_4'], items: sectionLabels.ability, color:'#8b5cf6'},
+            {label:'기본소양', keys:['basic_1','basic_2'], items: sectionLabels.basic, color:'#10b981'},
+          ];
+
+          const gradeMap = {5:'S',4:'A',3:'B',2:'C',1:'D'};
+
+          return `<div style="padding:20px 24px;border-bottom:1px solid #f8fafc">
+            <!-- 평가자 헤더 -->
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #f1f5f9">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:36px;height:36px;border-radius:50%;background:${sColor}20;border:2px solid ${sColor}44;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:${sColor}">${(e.evaluator_name||'?')[0]}</div>
+                <div>
+                  <div style="font-weight:800;font-size:14px">${e.evaluator_name}</div>
+                  ${e.evaluator_type?`<span style="font-size:11px;background:${sColor}15;color:${sColor};padding:2px 8px;border-radius:8px;font-weight:700">${e.evaluator_type}</span>`:''}
+                </div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:28px;font-weight:900;color:${sColor};line-height:1">${s100}<span style="font-size:13px;color:#94a3b8">/100</span></div>
+                <div style="font-size:11px;color:#64748b;margin-top:2px">${getGradeLabel(s100)}등급</div>
+              </div>
+            </div>
+
+            <!-- 섹션별 항목 -->
+            ${sections.map(sec => {
+              const secRaw = sec.keys.reduce((s,k)=>s+(e[k]||0),0);
+              const secScore = Math.round(secRaw / (sec.keys.length * 5) * 100);
+              return `<div style="margin-bottom:16px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                  <span style="font-size:12px;font-weight:700;color:${sec.color};padding:3px 10px;background:${sec.color}12;border-radius:20px">${sec.label}</span>
+                  <span style="font-size:12px;font-weight:800;color:${sec.color}">${secScore}점</span>
+                </div>
                 ${sec.keys.map((k,i) => {
                   const val = e[k]||0;
-                  const c = gradeColors[val]||'#64748b';
-                  const gradeMap = {5:'S',4:'A',3:'B',2:'C',1:'D'};
-                  return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#f8fafc;border-radius:8px;margin-bottom:6px">
-                    <span style="font-size:12px;color:#1e293b;flex:1">${sec.items[i]}</span>
-                    <span style="font-size:14px;font-weight:900;color:${c};background:${c}15;border:1px solid ${c}33;padding:3px 10px;border-radius:8px;min-width:40px;text-align:center;margin-left:12px">${gradeMap[val]||'-'}</span>
+                  const gc = gradeColors[val]||'#64748b';
+                  return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#f8fafc;border-radius:8px;margin-bottom:5px">
+                    <span style="font-size:12px;color:#475569;flex:1;padding-right:12px">${sec.items[i]}</span>
+                    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+                      <span style="font-size:13px;font-weight:900;color:${gc};background:${gc}15;border:1px solid ${gc}33;padding:2px 10px;border-radius:8px;min-width:32px;text-align:center">${gradeMap[val]||'-'}</span>
+                      <span style="font-size:11px;color:#94a3b8">${val}점</span>
+                    </div>
                   </div>`;
                 }).join('')}
-              </div>`).join('')}
-            ${e.comment?`<div style="margin-top:12px;padding:12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px">
-              <div style="font-size:11px;font-weight:700;color:#0369a1;margin-bottom:6px">평가자 의견</div>
-              <div style="font-size:13px;color:#1e293b;line-height:1.6">${e.comment}</div>
+              </div>`;
+            }).join('')}
+
+            ${e.comment?`<div style="margin-top:12px;padding:14px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px">
+              <div style="font-size:11px;font-weight:700;color:#0369a1;margin-bottom:6px">💬 평가자 의견</div>
+              <div style="font-size:13px;color:#1e293b;line-height:1.7">${e.comment}</div>
             </div>`:''}
           </div>`;
         }).join('')}
@@ -2189,7 +2217,6 @@ function showAdminEvalTab(tab) {
 }
 
 async function renderAdminPeerEval() {
-  // Use currentEmp (admin's employee record)
   const emp = currentEmp;
   if(!emp) { document.getElementById('admin-eval-peer-content').innerHTML='<div class="empty">직원 정보를 찾을 수 없어요</div>'; return; }
 
@@ -2370,7 +2397,7 @@ async function renderAdminProbationEval() {
     ${targets.map(t=>submittedTargetIds.includes(t.target_id)
       ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;margin-bottom:10px;color:#16a34a;font-weight:600">✅ ${t.target_name} 평가 완료</div>`
       : `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:12px">
-          <div style="font-weight:700;margin-bottom:12px">${t.target_name} (${t.evaluator_type})</div>
+          <div style="font-weight:700;margin-bottom:12px">${t.target_name} (${t.evaluator_type||'평가자'})</div>
           ${renderProbationForm(period.id, t.target_id, t.target_name, t.evaluator_type)}
         </div>`
     ).join('')}`;
@@ -2520,13 +2547,13 @@ async function renderAdminLeaveStats() {
 
 function toggleProbResult(uid) {
   const detail = document.getElementById('detail-'+uid);
-  const arrow = document.getElementById('arrow-'+uid);
+  const arrowLabel = document.getElementById('arrow-label-'+uid);
   if(detail.style.display==='none') {
     detail.style.display='block';
-    arrow.textContent='▲';
+    arrowLabel.textContent='▲ 상세 평가 내용 접기';
   } else {
     detail.style.display='none';
-    arrow.textContent='▼';
+    arrowLabel.textContent='▼ 상세 평가 내용 보기';
   }
 }
 
