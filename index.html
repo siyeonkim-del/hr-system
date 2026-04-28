@@ -1221,13 +1221,14 @@ async function renderEmpOrg() {
   const depts=[...new Set(allEmployees.map(e=>e.dept).filter(Boolean))];
   depts.forEach(d=>getDeptColor(d));
 
-  let orderedDepts = deptOrder ? deptOrder.filter(d=>depts.includes(d)) : [...depts].filter(d=>d!=='대표');
-  depts.filter(d=>d!=='대표').forEach(d=>{ if(!orderedDepts.includes(d)) orderedDepts.push(d); });
+  const ceo=allEmployees.find(e=>e.dept==='대표'||e.role==='대표');
+  const ceoDept = ceo?.dept || '대표';
+  let orderedDepts = deptOrder ? deptOrder.filter(d=>depts.includes(d)&&d!==ceoDept) : [...depts].filter(d=>d!==ceoDept);
+  depts.filter(d=>d!==ceoDept).forEach(d=>{ if(!orderedDepts.includes(d)) orderedDepts.push(d); });
 
   document.getElementById('emp-org-legend').innerHTML=orderedDepts.map(d=>`
     <div class="legend-item"><div class="legend-dot" style="background:${getDeptColor(d)}"></div>${d} (${allEmployees.filter(e=>e.dept===d).length}명)</div>`).join('');
 
-  const ceo=allEmployees.find(e=>e.dept==='대표'||e.role==='대표');
   if(!ceo){document.getElementById('emp-org-tree').innerHTML='<div class="empty">조직 데이터 없음</div>';return;}
 
   const deptGroups={};
