@@ -1704,7 +1704,7 @@ async function submitPeerEval(periodId) {
   renderPeerEval();
 }
 
-async function renderLeaderEval() {
+async function renderLeaderEval(selectedPeriodId) {
   if(!currentEmp) return;
   const periods = await api('evaluation_periods?type=eq.leader&is_open=eq.true&order=created_at.desc') || [];
 
@@ -1713,28 +1713,38 @@ async function renderLeaderEval() {
     return;
   }
 
-  const period = periods[0];
+  // 평가 기간이 여러 개면 선택 가능하게
+  const period = selectedPeriodId
+    ? periods.find(p=>p.id===selectedPeriodId) || periods[0]
+    : periods[0];
+
   const submitted = await api(`leader_evaluations?period_id=eq.${period.id}&evaluator_id=eq.${currentEmp.id}`) || [];
   const submittedTargetIds = submitted.map(s=>String(s.target_id));
   const assigned = await api(`leader_assign?period_id=eq.${period.id}&evaluator_id=eq.${currentEmp.id}`) || [];
   const assignedTargetIds = assigned.map(a=>String(a.target_id));
   if(!assignedTargetIds.length) {
-    document.getElementById('leader-eval-content').innerHTML = '<div class="empty">배정된 평가 대상자가 없어요.<br>관리자에게 문의해주세요.</div>';
+    document.getElementById('leader-eval-content').innerHTML = `
+      ${periods.length > 1 ? `<div style="margin-bottom:16px">
+        <div style="font-size:12px;color:#64748b;margin-bottom:4px;font-weight:600">평가 기간 선택</div>
+        <select onchange="renderLeaderEval(this.value)" style="width:100%;max-width:300px">
+          ${periods.map(p=>`<option value="${p.id}" ${p.id===period.id?'selected':''}>${p.title}</option>`).join('')}
+        </select>
+      </div>` : ''}
+      <div class="empty">배정된 평가 대상자가 없어요.<br>관리자에게 문의해주세요.</div>`;
     return;
   }
   const otherEmps = allEmployees.filter(e=>assignedTargetIds.includes(String(e.id)));
-  const scoreItems = [
-    {key:'score_performance',label:'업무 성과',desc:'업무 목표를 명확히 이해하고 성과를 달성한다'},
-    {key:'score_responsibility',label:'책임감',desc:'주어진 업무를 끝까지 수행하며 일정을 준수한다'},
-    {key:'score_collaboration',label:'협업/커뮤니케이션',desc:'팀 내 협업 및 소통이 원활하다'},
-    {key:'score_growth',label:'자기 계발',desc:'새로운 지식이나 기술을 스스로 학습한다'},
-    {key:'score_attitude',label:'근무 태도',desc:'조직 목표를 위해 성실히 임하며 긍정적 영향을 준다'},
-  ];
 
   window._leaderSubmitted = submitted;
   window._leaderPeriodId = period.id;
 
   document.getElementById('leader-eval-content').innerHTML = `
+    ${periods.length > 1 ? `<div style="margin-bottom:16px">
+      <div style="font-size:12px;color:#64748b;margin-bottom:4px;font-weight:600">평가 기간 선택</div>
+      <select onchange="renderLeaderEval(this.value)" style="width:100%;max-width:300px">
+        ${periods.map(p=>`<option value="${p.id}" ${p.id===period.id?'selected':''}>${p.title}</option>`).join('')}
+      </select>
+    </div>` : ''}
     <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:16px;margin-bottom:20px">
       <div style="font-weight:700;color:#0369a1">${period.title}</div>
       <div style="font-size:12px;color:#0284c7;margin-top:4px">${period.start_date||''} ~ ${period.end_date||''}</div>
