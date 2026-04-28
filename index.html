@@ -1628,6 +1628,7 @@ async function renderLeaderResults() {
             <div style="font-size:10px;color:#64748b;margin-top:4px">${label}</div>
           </div>`).join('')}
       </div>
+      ${r.evidence ? `<div style="font-size:12px;margin-bottom:6px;padding:10px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px"><b style="color:#0369a1">평가 근거:</b> <span style="color:#1e293b">${r.evidence}</span></div>` : ''}
       ${r.strength ? `<div style="font-size:12px;margin-bottom:6px"><b style="color:#64748b">강점:</b> ${r.strength}</div>` : ''}
       ${r.improvement ? `<div style="font-size:12px"><b style="color:#64748b">개선점:</b> ${r.improvement}</div>` : ''}
     </div>`).join('');
@@ -1789,6 +1790,10 @@ function renderLeaderForm(periodId) {
         </select>
       </div>
       <div style="margin-bottom:12px">
+        <div style="font-size:12px;color:#64748b;margin-bottom:4px">평가 근거 <span style="color:#ef4444">*</span></div>
+        <textarea id="ldr-evidence" placeholder="위 점수와 기여도 평가의 근거를 구체적으로 작성해주세요 (예: 어떤 업무에서 어떤 행동을 보였는지)" style="width:100%;height:90px;resize:vertical;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none"></textarea>
+      </div>
+      <div style="margin-bottom:12px">
         <div style="font-size:12px;color:#64748b;margin-bottom:4px">해당 직원이 다른 구성원과 비교했을 때 가장 두드러지는 강점은 무엇인가요?</div>
         <textarea id="ldr-strength" placeholder="서술형으로 작성해주세요" style="width:100%;height:70px;resize:vertical;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none"></textarea>
       </div>
@@ -1835,18 +1840,20 @@ async function submitLeaderEval(periodId, targetId, targetName) {
   };
   if(Object.values(scores).some(s=>!s)) return alert('모든 절대평가 항목을 입력해주세요.');
   const contribution = document.getElementById('ldr-contribution').value;
+  const evidence = document.getElementById('ldr-evidence').value.trim();
   const strength = document.getElementById('ldr-strength').value.trim();
   const growth_potential = document.getElementById('ldr-growth-potential').value;
   const improvement = document.getElementById('ldr-improvement').value.trim();
 
   if(!contribution) return alert('팀 내 기여도를 선택해주세요.');
+  if(!evidence) return alert('평가 근거를 작성해주세요.');
   if(!strength) return alert('강점을 작성해주세요.');
   if(!growth_potential) return alert('성장 가능성을 선택해주세요.');
   if(!improvement) return alert('개선점을 작성해주세요.');
   await api('leader_evaluations','POST',{
     period_id:periodId, evaluator_id:currentEmp.id, evaluator_name:currentEmp.name,
     target_id:targetId, target_name:targetName,
-    ...scores, contribution, strength, growth_potential, improvement
+    ...scores, contribution, evidence, strength, growth_potential, improvement
   });
   alert(`${targetName}님 평가가 제출되었습니다!`);
   renderLeaderEval();
@@ -2372,6 +2379,10 @@ function renderAdminLeaderForm(periodId) {
         </select>
       </div>
       <div style="margin-bottom:12px">
+        <div style="font-size:12px;color:#64748b;margin-bottom:4px">평가 근거 <span style="color:#ef4444">*</span></div>
+        <textarea id="admin-ldr-evidence" placeholder="위 점수와 기여도 평가의 근거를 구체적으로 작성해주세요" style="width:100%;height:80px;resize:vertical;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px;font-family:inherit;font-size:13px;outline:none"></textarea>
+      </div>
+      <div style="margin-bottom:12px">
         <div style="font-size:12px;color:#64748b;margin-bottom:4px">강점</div>
         <textarea id="admin-ldr-strength" style="width:100%;height:60px;resize:vertical;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px;font-family:inherit;font-size:13px;outline:none"></textarea>
       </div>
@@ -2400,17 +2411,19 @@ async function submitAdminLeaderEval(periodId, targetId, targetName) {
   const scores = {};
   for(const k of scoreKeys) { scores[k]=getScore(k); if(!scores[k]) return alert('모든 절대평가 항목을 입력해주세요.'); }
   const contribution = document.getElementById('admin-ldr-contribution').value;
+  const evidence = document.getElementById('admin-ldr-evidence').value.trim();
   const strength = document.getElementById('admin-ldr-strength').value.trim();
   const growth_potential = document.getElementById('admin-ldr-growth').value;
   const improvement = document.getElementById('admin-ldr-improvement').value.trim();
   if(!contribution) return alert('팀 내 기여도를 선택해주세요.');
+  if(!evidence) return alert('평가 근거를 작성해주세요.');
   if(!strength) return alert('강점을 작성해주세요.');
   if(!growth_potential) return alert('성장 가능성을 선택해주세요.');
   if(!improvement) return alert('개선점을 작성해주세요.');
   await api('leader_evaluations','POST',{
     period_id:periodId, evaluator_id:emp.id, evaluator_name:emp.name,
     target_id:targetId, target_name:targetName, ...scores,
-    contribution, strength, growth_potential, improvement,
+    contribution, evidence, strength, growth_potential, improvement,
   });
   alert(`${targetName}님 평가가 제출되었습니다!`);
   renderAdminLeaderEval();
