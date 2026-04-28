@@ -1715,14 +1715,14 @@ async function renderLeaderEval() {
 
   const period = periods[0];
   const submitted = await api(`leader_evaluations?period_id=eq.${period.id}&evaluator_id=eq.${currentEmp.id}`) || [];
-  const submittedTargetIds = submitted.map(s=>s.target_id);
+  const submittedTargetIds = submitted.map(s=>String(s.target_id));
   const assigned = await api(`leader_assign?period_id=eq.${period.id}&evaluator_id=eq.${currentEmp.id}`) || [];
-  const assignedTargetIds = assigned.map(a=>a.target_id);
+  const assignedTargetIds = assigned.map(a=>String(a.target_id));
   if(!assignedTargetIds.length) {
     document.getElementById('leader-eval-content').innerHTML = '<div class="empty">배정된 평가 대상자가 없어요.<br>관리자에게 문의해주세요.</div>';
     return;
   }
-  const otherEmps = allEmployees.filter(e=>assignedTargetIds.includes(e.id));
+  const otherEmps = allEmployees.filter(e=>assignedTargetIds.includes(String(e.id)));
   const scoreItems = [
     {key:'score_performance',label:'업무 성과',desc:'업무 목표를 명확히 이해하고 성과를 달성한다'},
     {key:'score_responsibility',label:'책임감',desc:'주어진 업무를 끝까지 수행하며 일정을 준수한다'},
@@ -1740,8 +1740,8 @@ async function renderLeaderEval() {
       <div style="font-size:12px;color:#64748b;margin-bottom:4px;font-weight:600">평가 대상자 선택</div>
       <select id="leader-target" style="width:100%;max-width:300px" onchange="renderLeaderForm('${period.id}')">
         <option value="">선택해주세요</option>
-        ${otherEmps.map(e=>`<option value="${e.id}" data-name="${e.name}" ${submittedTargetIds.includes(e.id)?'disabled':''}>
-          ${e.name} (${e.dept}) ${submittedTargetIds.includes(e.id)?'✅ 완료':''}
+        ${otherEmps.map(e=>`<option value="${e.id}" data-name="${e.name}" ${submittedTargetIds.includes(String(e.id))?'disabled':''}>
+          ${e.name} (${e.dept}) ${submittedTargetIds.includes(String(e.id))?'✅ 완료':''}
         </option>`).join('')}
       </select>
     </div>
@@ -1801,6 +1801,7 @@ function renderLeaderForm(periodId) {
         <div style="font-size:12px;color:#64748b;margin-bottom:4px">향후 성장 가능성은 어느 정도일까요? <span style="color:#ef4444">*</span></div>
         <select id="ldr-growth-potential" style="width:100%">
           <option value="">선택해주세요</option>
+          <option value="매우 높음">매우 높음</option>
           <option value="높음">높음</option>
           <option value="보통">보통</option>
           <option value="낮음">낮음</option>
@@ -2319,13 +2320,13 @@ async function renderAdminLeaderEval() {
   if(!periods.length) { document.getElementById('admin-eval-leader-content').innerHTML='<div class="empty">진행 중인 리더평가가 없어요</div>'; return; }
   const period = periods[0];
   const submitted = await api(`leader_evaluations?period_id=eq.${period.id}&evaluator_id=eq.${emp.id}`) || [];
-  const submittedTargetIds = submitted.map(s=>s.target_id);
+  const submittedTargetIds = submitted.map(s=>String(s.target_id));
   const assigned = await api(`leader_assign?period_id=eq.${period.id}&evaluator_id=eq.${emp.id}`) || [];
   if(!assigned.length) {
     document.getElementById('admin-eval-leader-content').innerHTML = '<div class="empty">배정된 평가 대상자가 없어요.</div>';
     return;
   }
-  const targets = allEmployees.filter(e=>assigned.map(a=>a.target_id).includes(e.id));
+  const targets = allEmployees.filter(e=>assigned.map(a=>String(a.target_id)).includes(String(e.id)));
 
   document.getElementById('admin-eval-leader-content').innerHTML = `
     <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:12px;margin-bottom:16px">
@@ -2335,8 +2336,8 @@ async function renderAdminLeaderEval() {
       <div style="font-size:12px;color:#64748b;margin-bottom:4px;font-weight:600">평가 대상자</div>
       <select id="admin-leader-target" style="width:100%" onchange="renderAdminLeaderForm('${period.id}')">
         <option value="">선택해주세요</option>
-        ${targets.map(e=>`<option value="${e.id}" data-name="${e.name}" ${submittedTargetIds.includes(e.id)?'disabled':''}>
-          ${e.name} (${e.dept}) ${submittedTargetIds.includes(e.id)?'✅':''}
+        ${targets.map(e=>`<option value="${e.id}" data-name="${e.name}" ${submittedTargetIds.includes(String(e.id))?'disabled':''}>
+          ${e.name} (${e.dept}) ${submittedTargetIds.includes(String(e.id))?'✅':''}
         </option>`).join('')}
       </select>
     </div>
