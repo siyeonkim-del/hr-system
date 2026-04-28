@@ -201,7 +201,7 @@
 
     <!-- 상호평가 -->
     <div id="emp-tab-peer-eval" class="emp-tab" style="display:none">
-      <div style="font-size:24px;font-weight:900;margin-bottom:6px">상호평가</div>
+      <div style="font-size:24px;font-weight:900;margin-bottom:6px">상호평가 (동료 칭찬제)</div>
       <div style="color:#64748b;font-size:13px;margin-bottom:24px">함께 일하며 긍정적인 영향을 준 동료를 선택해주세요</div>
       <div id="peer-eval-content"><div class="loading">로딩 중...</div></div>
     </div>
@@ -414,7 +414,7 @@
           <div style="margin-bottom:10px">
             <div style="font-size:12px;color:#64748b;margin-bottom:4px">평가 종류</div>
             <select id="ep-type" style="width:100%">
-              <option value="peer">상호평가</option>
+              <option value="peer">상호평가 (동료 칭찬제)</option>
               <option value="leader">리더평가</option>
               <option value="probation">수습평가</option>
             </select>
@@ -1780,20 +1780,22 @@ function renderLeaderForm(periodId) {
 
       <div style="margin-top:20px;font-weight:700;margin-bottom:12px">상대평가</div>
       <div style="margin-bottom:12px">
-        <div style="font-size:12px;color:#64748b;margin-bottom:4px">팀 내 전반적 기여도</div>
+        <div style="font-size:12px;color:#64748b;margin-bottom:4px">팀 내에서 전반적 기여도를 고려할 때, 해당 직원의 수준은?</div>
         <select id="ldr-contribution" style="width:100%">
           <option value="">선택해주세요</option>
-          <option value="A등급 (상위 10%)">A등급 (상위 10%)</option>
-          <option value="B등급 (중간 70%)">B등급 (중간 70%)</option>
-          <option value="C등급 (하위 20%)">C등급 (하위 20%)</option>
+          <option value="상위 10%">상위 10%</option>
+          <option value="상위 25%">상위 25%</option>
+          <option value="중위권">중위권</option>
+          <option value="하위 25%">하위 25%</option>
+          <option value="하위 10%">하위 10%</option>
         </select>
       </div>
       <div style="margin-bottom:12px">
-        <div style="font-size:12px;color:#64748b;margin-bottom:4px">가장 두드러지는 강점</div>
+        <div style="font-size:12px;color:#64748b;margin-bottom:4px">해당 직원이 다른 구성원과 비교했을 때 가장 두드러지는 강점은 무엇인가요?</div>
         <textarea id="ldr-strength" placeholder="서술형으로 작성해주세요" style="width:100%;height:70px;resize:vertical;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none"></textarea>
       </div>
       <div style="margin-bottom:12px">
-        <div style="font-size:12px;color:#64748b;margin-bottom:4px">향후 성장 가능성</div>
+        <div style="font-size:12px;color:#64748b;margin-bottom:4px">향후 성장 가능성은 어느 정도일까요?</div>
         <select id="ldr-growth-potential" style="width:100%">
           <option value="">선택해주세요</option>
           <option value="매우 높음">매우 높음</option>
@@ -1803,7 +1805,7 @@ function renderLeaderForm(periodId) {
         </select>
       </div>
       <div style="margin-bottom:16px">
-        <div style="font-size:12px;color:#64748b;margin-bottom:4px">개선이 필요한 부분</div>
+        <div style="font-size:12px;color:#64748b;margin-bottom:4px">조직에 더 크게 기여하기 위해 개선이 필요하다고 생각되는 부분이 있다면?</div>
         <textarea id="ldr-improvement" placeholder="서술형으로 작성해주세요" style="width:100%;height:70px;resize:vertical;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-family:inherit;font-size:13px;outline:none"></textarea>
       </div>
       <button class="btn btn-primary" style="width:100%;padding:12px" onclick="submitLeaderEval('${periodId}','${targetId}','${targetName}')">평가 제출하기</button>
@@ -1839,8 +1841,10 @@ async function submitLeaderEval(periodId, targetId, targetName) {
   const growth_potential = document.getElementById('ldr-growth-potential').value;
   const improvement = document.getElementById('ldr-improvement').value.trim();
 
-  if(!strength) return alert('강점은 필수 항목입니다.');
-  if(!improvement) return alert('개선점은 필수 항목입니다.');
+  if(!contribution) return alert('팀 내 기여도를 선택해주세요.');
+  if(!strength) return alert('강점을 작성해주세요.');
+  if(!growth_potential) return alert('성장 가능성을 선택해주세요.');
+  if(!improvement) return alert('개선점을 작성해주세요.');
   await api('leader_evaluations','POST',{
     period_id:periodId, evaluator_id:currentEmp.id, evaluator_name:currentEmp.name,
     target_id:targetId, target_name:targetName,
@@ -2396,14 +2400,19 @@ async function submitAdminLeaderEval(periodId, targetId, targetName) {
   };
   const scoreKeys = ['score_performance','score_responsibility','score_collaboration','score_growth','score_attitude'];
   const scores = {};
-  for(const k of scoreKeys) { scores[k]=getScore(k); if(!scores[k]) return alert('모든 항목을 평가해주세요.'); }
+  for(const k of scoreKeys) { scores[k]=getScore(k); if(!scores[k]) return alert('모든 절대평가 항목을 입력해주세요.'); }
+  const contribution = document.getElementById('admin-ldr-contribution').value;
+  const strength = document.getElementById('admin-ldr-strength').value.trim();
+  const growth_potential = document.getElementById('admin-ldr-growth').value;
+  const improvement = document.getElementById('admin-ldr-improvement').value.trim();
+  if(!contribution) return alert('팀 내 기여도를 선택해주세요.');
+  if(!strength) return alert('강점을 작성해주세요.');
+  if(!growth_potential) return alert('성장 가능성을 선택해주세요.');
+  if(!improvement) return alert('개선점을 작성해주세요.');
   await api('leader_evaluations','POST',{
     period_id:periodId, evaluator_id:emp.id, evaluator_name:emp.name,
     target_id:targetId, target_name:targetName, ...scores,
-    contribution:document.getElementById('admin-ldr-contribution').value,
-    strength:document.getElementById('admin-ldr-strength').value,
-    growth_potential:document.getElementById('admin-ldr-growth').value,
-    improvement:document.getElementById('admin-ldr-improvement').value,
+    contribution, strength, growth_potential, improvement,
   });
   alert(`${targetName}님 평가가 제출되었습니다!`);
   renderAdminLeaderEval();
