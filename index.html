@@ -1801,7 +1801,6 @@ function renderLeaderForm(periodId) {
         <div style="font-size:12px;color:#64748b;margin-bottom:4px">향후 성장 가능성은 어느 정도일까요? <span style="color:#ef4444">*</span></div>
         <select id="ldr-growth-potential" style="width:100%">
           <option value="">선택해주세요</option>
-          <option value="매우 높음">매우 높음</option>
           <option value="높음">높음</option>
           <option value="보통">보통</option>
           <option value="낮음">낮음</option>
@@ -1820,15 +1819,21 @@ function selectScore(key, val) {
     el.style.background = 'white';
     el.style.borderColor = '#e2e8f0';
     el.style.color = '#1e293b';
+    el.removeAttribute('data-selected');
   });
   const el = document.querySelector(`[data-key="${key}"][data-val="${val}"]`);
-  if(el) { el.style.background='#3b82f6'; el.style.borderColor='#3b82f6'; el.style.color='white'; }
+  if(el) {
+    el.style.background='#3b82f6';
+    el.style.borderColor='#3b82f6';
+    el.style.color='white';
+    el.setAttribute('data-selected','true');
+  }
 }
 
 async function submitLeaderEval(periodId, targetId, targetName) {
   if(!currentEmp) return;
   const getScore = key => {
-    const el = document.querySelector(`[data-key="${key}"][style*="background: rgb(59, 130, 246)"], [data-key="${key}"][style*="background:rgb(59, 130, 246)"], [data-key="${key}"][style*="background: #3b82f6"]`);
+    const el = document.querySelector(`[data-key="${key}"][data-selected="true"]`);
     return el ? parseInt(el.dataset.val) : null;
   };
   const scores = {
@@ -1850,11 +1855,14 @@ async function submitLeaderEval(periodId, targetId, targetName) {
   if(!strength) return alert('강점을 작성해주세요.');
   if(!growth_potential) return alert('성장 가능성을 선택해주세요.');
   if(!improvement) return alert('개선점을 작성해주세요.');
-  await api('leader_evaluations','POST',{
+  const result = await api('leader_evaluations','POST',{
     period_id:periodId, evaluator_id:currentEmp.id, evaluator_name:currentEmp.name,
     target_id:targetId, target_name:targetName,
     ...scores, contribution, evidence, strength, growth_potential, improvement
   });
+  if(result && result.code) {
+    return alert('저장 오류: ' + (result.message || JSON.stringify(result)));
+  }
   alert(`${targetName}님 평가가 제출되었습니다!`);
   renderLeaderEval();
 }
@@ -2404,7 +2412,7 @@ function renderAdminLeaderForm(periodId) {
 async function submitAdminLeaderEval(periodId, targetId, targetName) {
   const emp = currentEmp; if(!emp) return;
   const getScore = key => {
-    const el = document.querySelector(`[data-key="admin_${key}"][style*="background: rgb(59, 130, 246)"], [data-key="admin_${key}"][style*="background:#3b82f6"], [data-key="admin_${key}"][style*="background: #3b82f6"]`);
+    const el = document.querySelector(`[data-key="admin_${key}"][data-selected="true"]`);
     return el ? parseInt(el.dataset.val) : null;
   };
   const scoreKeys = ['score_performance','score_responsibility','score_collaboration','score_growth','score_attitude'];
