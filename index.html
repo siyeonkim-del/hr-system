@@ -242,8 +242,8 @@
   <div id="leave-submenu" style="display:none;margin-left:12px;margin-bottom:2px">
     <button class="nav-btn" id="nav-leave-manage" onclick="showPage('leave',this)" style="font-size:12px;padding:7px 10px">휴가 관리</button>
     <button class="nav-btn" id="nav-leave-mine" onclick="showPage('my-leave-admin',this)" style="font-size:12px;padding:7px 10px">휴가 신청</button>
+    <button class="nav-btn" id="nav-leave-holidays" onclick="showPage('holidays',this)" style="font-size:12px;padding:7px 10px">공휴일 관리</button>
   </div>
-  <button class="nav-btn" onclick="showPage('holidays',this)">공휴일 관리</button>
   <button class="nav-btn" id="nav-eval-parent" onclick="toggleEvalSubMenu(this)">인사평가 ▾</button>
   <div id="eval-submenu" style="display:none;margin-left:12px;margin-bottom:2px">
     <button class="nav-btn" id="nav-eval-periods" onclick="showEvalPageTab('periods',this)" style="font-size:12px;padding:7px 10px">평가 기간 관리</button>
@@ -721,7 +721,7 @@ function showPage(id, btn) {
   if(id==='evaluation') { showEvalTab('periods'); }
   if(id==='my-leave-admin') { showAdminMyLeaveTab('request'); }
   // 휴가 관련 페이지면 서브메뉴 자동 펼침
-  if(id==='leave' || id==='my-leave-admin') {
+  if(id==='leave' || id==='my-leave-admin' || id==='holidays') {
     const sub = document.getElementById('leave-submenu');
     const parent = document.getElementById('nav-leave-parent');
     if(sub) { sub.style.display='block'; }
