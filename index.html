@@ -1557,9 +1557,13 @@ async function togglePeriod(id, isOpen) {
 
 async function deletePeriod(id) {
   if(!confirm('삭제하시겠어요? 관련 평가 데이터도 함께 삭제됩니다.')) return;
+  // 자식 테이블부터 순서대로 삭제 (FK 제약 오류 방지)
   await api(`peer_evaluations?period_id=eq.${id}`,'DELETE');
   await api(`leader_evaluations?period_id=eq.${id}`,'DELETE');
-  await api(`evaluation_periods?id=eq.${id}`,'DELETE');
+  await api(`probation_evaluations?period_id=eq.${id}`,'DELETE');
+  await api(`probation_targets?period_id=eq.${id}`,'DELETE');
+  await api(`leader_assign?period_id=eq.${id}`,'DELETE');
+  const result = await api(`evaluation_periods?id=eq.${id}`,'DELETE');
   renderPeriods();
 }
 
