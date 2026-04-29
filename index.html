@@ -1576,13 +1576,14 @@ async function openAssign(periodId, type, title) {
   document.getElementById('assign-title').textContent = `[${title}] 대상자 지정`;
   document.getElementById('assign-section').scrollIntoView({behavior:'smooth'});
 
+  const toArr = r => Array.isArray(r) ? r : [];
   let existing = [];
   if(type === 'probation') {
-    existing = await api(`probation_targets?period_id=eq.${periodId}`) || [];
+    existing = toArr(await api(`probation_targets?period_id=eq.${periodId}`));
   } else if(type === 'peer') {
-    existing = await api(`peer_targets?period_id=eq.${periodId}`) || [];
+    existing = toArr(await api(`peer_targets?period_id=eq.${periodId}`));
   } else {
-    existing = await api(`leader_assign?period_id=eq.${periodId}`) || [];
+    existing = toArr(await api(`leader_assign?period_id=eq.${periodId}`));
   }
 
   const existingTargetIds = existing.map(a=>a.target_id);
@@ -1851,11 +1852,11 @@ async function renderPeerEval() {
   }
 
   const period = periods[0];
-  const [submitted, peerTargets] = await Promise.all([
-    api(`peer_evaluations?period_id=eq.${period.id}&evaluator_id=eq.${currentEmp.id}`) || [],
-    api(`peer_targets?period_id=eq.${period.id}`) || []
+  const [submitted, peerTargetsRaw] = await Promise.all([
+    api(`peer_evaluations?period_id=eq.${period.id}&evaluator_id=eq.${currentEmp.id}`),
+    api(`peer_targets?period_id=eq.${period.id}`)
   ]);
-  const peerTargetIds = (peerTargets||[]).map(t=>t.target_id);
+  const peerTargetIds = (Array.isArray(peerTargetsRaw) ? peerTargetsRaw : []).map(t=>t.target_id);
   const eligibleEmps = allEmployees.filter(e=>
     e.id !== currentEmp.id &&
     e.dept === currentEmp.dept &&
@@ -2565,11 +2566,11 @@ async function renderAdminPeerEval() {
   if(!periods.length) { document.getElementById('admin-eval-peer-content').innerHTML='<div class="empty">진행 중인 상호평가가 없어요</div>'; return; }
 
   const period = periods[0];
-  const [submitted, peerTargets] = await Promise.all([
+  const [submitted, peerTargetsRaw] = await Promise.all([
     api(`peer_evaluations?period_id=eq.${period.id}&evaluator_id=eq.${emp.id}`),
     api(`peer_targets?period_id=eq.${period.id}`)
   ]);
-  const peerTargetIds = (peerTargets||[]).map(t=>t.target_id);
+  const peerTargetIds = (Array.isArray(peerTargetsRaw) ? peerTargetsRaw : []).map(t=>t.target_id);
   const eligibleEmps = allEmployees.filter(e=>
     e.id !== emp.id &&
     e.dept === emp.dept &&
