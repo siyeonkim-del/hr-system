@@ -569,6 +569,33 @@
     </div>
   </div>
 
+  <!-- 상호평가 (관리자 본인) -->
+  <div id="page-admin-peer-eval" class="page">
+    <div class="page-title">상호평가</div>
+    <div class="page-sub">함께 일하며 긍정적인 영향을 준 동료를 선택해주세요</div>
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:24px;max-width:640px">
+      <div id="admin-eval-peer-content"><div class="loading">로딩 중...</div></div>
+    </div>
+  </div>
+
+  <!-- 리더평가 (관리자 본인) -->
+  <div id="page-admin-leader-eval" class="page">
+    <div class="page-title">리더평가</div>
+    <div class="page-sub">팀원의 역량을 평가해주세요</div>
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:24px">
+      <div id="admin-eval-leader-content"><div class="loading">로딩 중...</div></div>
+    </div>
+  </div>
+
+  <!-- 수습평가 (관리자 본인) -->
+  <div id="page-admin-probation-eval" class="page">
+    <div class="page-title">수습평가</div>
+    <div class="page-sub">수습사원의 역량을 평가해주세요</div>
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:24px">
+      <div id="admin-eval-probation-content"><div class="loading">로딩 중...</div></div>
+    </div>
+  </div>
+
 </div>
 
 <!-- 직원 상세 모달 -->
@@ -667,18 +694,19 @@ function avatarEl(name, dept, size=40) {
 }
 
 function openAdminEvalDirect(tab, btn) {
-  // 인사평가 페이지로 이동 + 서브메뉴 활성화
+  const pageMap = { peer: 'admin-peer-eval', leader: 'admin-leader-eval', probation: 'admin-probation-eval' };
+  const pageId = pageMap[tab];
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('page-evaluation').classList.add('active');
+  document.getElementById('page-'+pageId).classList.add('active');
   const sub = document.getElementById('eval-submenu');
   const parent = document.getElementById('nav-eval-parent');
   if(sub) sub.style.display='block';
   if(parent) { parent.textContent='인사평가 ▴'; parent.classList.add('active'); }
   if(btn) btn.classList.add('active');
-  // 관리자 평가 참여 모달 열고 해당 탭으로
-  showAdminEvalModal();
-  showAdminEvalTab(tab);
+  if(tab==='peer') renderAdminPeerEval();
+  if(tab==='leader') renderAdminLeaderEval();
+  if(tab==='probation') renderAdminProbationEval();
 }
 
 function toggleEvalSubMenu(parentBtn) {
@@ -3279,21 +3307,6 @@ initApp();
   </div>
 </div>
 
-<!-- 관리자 평가 참여 모달 -->
-<div class="modal-bg" id="admin-eval-modal" onclick="closeModal('admin-eval-modal')">
-  <div class="modal" onclick="event.stopPropagation()" style="width:560px;max-height:85vh;overflow-y:auto">
-    <h3>내 평가 참여</h3>
-    <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:2px solid #e2e8f0;padding-bottom:0">
-      <button id="aetab-peer" onclick="showAdminEvalTab('peer')" style="padding:8px 16px;border:none;background:none;font-size:13px;font-weight:700;color:#3b82f6;border-bottom:2px solid #3b82f6;margin-bottom:-2px;cursor:pointer;font-family:inherit">상호평가</button>
-      <button id="aetab-leader" onclick="showAdminEvalTab('leader')" style="padding:8px 16px;border:none;background:none;font-size:13px;font-weight:600;color:#64748b;cursor:pointer;font-family:inherit">리더평가</button>
-      <button id="aetab-probation" onclick="showAdminEvalTab('probation')" style="padding:8px 16px;border:none;background:none;font-size:13px;font-weight:600;color:#64748b;cursor:pointer;font-family:inherit">수습평가</button>
-    </div>
-    <div id="admin-eval-peer-content"></div>
-    <div id="admin-eval-leader-content" style="display:none"></div>
-    <div id="admin-eval-probation-content" style="display:none"></div>
-    <button class="btn btn-gray" style="width:100%;margin-top:16px" onclick="closeModal('admin-eval-modal')">닫기</button>
-  </div>
-</div>
 
 <!-- 관리자 휴가 신청 모달 -->
 <div class="modal-bg" id="admin-leave-modal" onclick="closeModal('admin-leave-modal')">
