@@ -1548,7 +1548,7 @@ async function renderPeriods() {
     const colorMap = { peer:'#8b5cf6', leader:'#3b82f6', probation:'#f59e0b' };
     const typeLabel = typeMap[p.type] || p.type;
     const typeColor = colorMap[p.type] || '#64748b';
-    const showAssign = p.type === 'leader' || p.type === 'probation';
+    const showAssign = p.type === 'leader' || p.type === 'probation' || p.type === 'peer';
     return `<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid #f1f5f9">
       <div>
         <div style="font-weight:700;font-size:14px">${p.title}</div>
@@ -1573,90 +1573,108 @@ function closeAssign() {
 
 async function openAssign(periodId, type, title) {
   document.getElementById('assign-section').style.display = 'block';
-  document.getElementById('assign-title').textContent = `[${title}] 대상자 및 평가자 지정`;
+  document.getElementById('assign-title').textContent = `[${title}] 대상자 지정`;
   document.getElementById('assign-section').scrollIntoView({behavior:'smooth'});
 
-  const table = type === 'probation' ? 'probation_targets' : 'leader_assign';
   let existing = [];
   if(type === 'probation') {
     existing = await api(`probation_targets?period_id=eq.${periodId}`) || [];
+  } else if(type === 'peer') {
+    existing = await api(`peer_targets?period_id=eq.${periodId}`) || [];
   } else {
     existing = await api(`leader_assign?period_id=eq.${periodId}`) || [];
   }
 
   const existingTargetIds = existing.map(a=>a.target_id);
 
+  const targetSection = `
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:700">평가 대상자 선택</div>
+        <div style="display:flex;gap:6px">
+          <button onclick="toggleAllTargets(true)" class="btn btn-primary" style="font-size:11px;padding:4px 10px">전체 선택</button>
+          <button onclick="toggleAllTargets(false)" class="btn btn-gray" style="font-size:11px;padding:4px 10px">전체 해제</button>
+        </div>
+      </div>
+      <div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;max-height:320px;overflow-y:auto">
+        ${(() => {
+          const depts = [...new Set(allEmployees.map(e=>e.dept).filter(Boolean))];
+          return depts.map(dept => {
+            const deptEmps = allEmployees.filter(e=>e.dept===dept);
+            const deptColor = getDeptColor(dept);
+            return `<div>
+              <div style="padding:7px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:11px;font-weight:700;color:${deptColor};display:flex;align-items:center;gap:8px">
+                <span>${dept} (${deptEmps.length}명)</span>
+                <button onclick="toggleDeptTargets('${dept}',true)" style="background:none;border:none;color:${deptColor};cursor:pointer;font-size:10px;text-decoration:underline;padding:0;font-family:inherit">전체선택</button>
+                <button onclick="toggleDeptTargets('${dept}',false)" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:10px;text-decoration:underline;padding:0;font-family:inherit">해제</button>
+              </div>
+              ${deptEmps.map(e=>`
+                <label style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-bottom:1px solid #f1f5f9;cursor:pointer" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                  <input type="checkbox" class="target-checkbox" value="${e.id}" data-name="${e.name}" data-dept="${e.dept}" ${existingTargetIds.includes(e.id)?'disabled checked':''} style="width:15px;height:15px;cursor:pointer">
+                  <div>
+                    <span style="font-size:13px;font-weight:600">${e.name}</span>
+                    <span style="font-size:11px;color:#64748b;margin-left:6px">${e.role}</span>
+                    ${existingTargetIds.includes(e.id)?'<span style="font-size:10px;color:#10b981;margin-left:4px">✓ 지정됨</span>':''}
+                  </div>
+                </label>`).join('')}
+            </div>`;
+          }).join('');
+        })()}
+      </div>
+    </div>`;
+
+  const rightPanel = type === 'peer' ? `
+    <div>
+      <div style="font-size:12px;color:#0369a1;margin-bottom:16px;padding:10px 12px;background:#f0f9ff;border-radius:8px;border:1px solid #bae6fd">
+        💡 지정된 직원만 상호평가 동료 선택 드롭다운에 나타납니다. 같은 팀원에게만 표시됩니다.
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-bottom:16px" onclick="addAssign('${periodId}','${type}')">선택한 대상자 추가하기</button>
+      <div style="font-size:14px;font-weight:700;margin-bottom:10px">지정된 목록 <span style="font-size:12px;color:#64748b;font-weight:400">(${existing.length}명)</span></div>
+      <div id="assign-list" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;max-height:320px;overflow-y:auto">
+        ${existing.length ? existing.map(a=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:13px">
+            <span style="font-weight:600">${a.target_name}</span>
+            <button onclick="removeAssign('${a.id}','${type}','${periodId}')" class="btn btn-danger" style="font-size:10px;padding:2px 8px">삭제</button>
+          </div>`).join('') : '<div class="empty" style="padding:20px">지정된 대상자가 없어요</div>'}
+      </div>
+    </div>` : `
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:700">평가자 선택 <span style="font-size:11px;color:#64748b;font-weight:400">(복수 선택 가능)</span></div>
+        <div style="display:flex;gap:6px">
+          <button onclick="toggleAllEvaluators(true)" class="btn btn-primary" style="font-size:11px;padding:4px 10px">전체 선택</button>
+          <button onclick="toggleAllEvaluators(false)" class="btn btn-gray" style="font-size:11px;padding:4px 10px">전체 해제</button>
+        </div>
+      </div>
+      <div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;max-height:200px;overflow-y:auto;margin-bottom:12px">
+        ${allEmployees.filter(e=>e.leader_role).map(e=>`
+          <label style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #f1f5f9;cursor:pointer" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+            <input type="checkbox" class="evaluator-checkbox" value="${e.id}" data-name="${e.name}" data-leader-role="${e.leader_role||''}" style="width:16px;height:16px;cursor:pointer">
+            <div>
+              <div style="font-size:13px;font-weight:600">${e.name} <span style="font-size:11px;background:#3b82f615;color:#3b82f6;padding:1px 6px;border-radius:8px">${e.leader_role}</span></div>
+              <div style="font-size:11px;color:#64748b">${e.dept} · ${e.role}</div>
+            </div>
+          </label>`).join('')}
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-bottom:16px" onclick="addAssign('${periodId}','${type}')">선택한 대상자 추가하기</button>
+      <div style="font-size:14px;font-weight:700;margin-bottom:10px">지정된 목록 <span style="font-size:12px;color:#64748b;font-weight:400">(${existing.length}명)</span></div>
+      <div id="assign-list" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;max-height:200px;overflow-y:auto">
+        ${existing.length ? existing.map(a=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:13px">
+            <div>
+              <span style="font-weight:600">${a.target_name}</span>
+              <span style="color:#64748b;font-size:11px;margin-left:8px">← ${a.evaluator_name}</span>
+              ${a.evaluator_type ? `<span style="margin-left:6px;background:#8b5cf615;color:#8b5cf6;padding:2px 6px;border-radius:8px;font-size:10px">${a.evaluator_type}</span>` : ''}
+            </div>
+            <button onclick="removeAssign('${a.id}','${type}','${periodId}')" class="btn btn-danger" style="font-size:10px;padding:2px 8px">삭제</button>
+          </div>`).join('') : '<div class="empty" style="padding:20px">지정된 대상자가 없어요</div>'}
+      </div>
+    </div>`;
+
   document.getElementById('assign-content').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-      <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <div style="font-size:14px;font-weight:700">평가 대상자 선택</div>
-          <div style="display:flex;gap:6px">
-            <button onclick="toggleAllTargets(true)" class="btn btn-primary" style="font-size:11px;padding:4px 10px">전체 선택</button>
-            <button onclick="toggleAllTargets(false)" class="btn btn-gray" style="font-size:11px;padding:4px 10px">전체 해제</button>
-          </div>
-        </div>
-        <div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;max-height:320px;overflow-y:auto">
-          ${(() => {
-            const depts = [...new Set(allEmployees.map(e=>e.dept).filter(Boolean))];
-            return depts.map(dept => {
-              const deptEmps = allEmployees.filter(e=>e.dept===dept);
-              const deptColor = getDeptColor(dept);
-              return `<div>
-                <div style="padding:7px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:11px;font-weight:700;color:${deptColor};display:flex;align-items:center;gap:8px">
-                  <span>${dept} (${deptEmps.length}명)</span>
-                  <button onclick="toggleDeptTargets('${dept}',true)" style="background:none;border:none;color:${deptColor};cursor:pointer;font-size:10px;text-decoration:underline;padding:0;font-family:inherit">전체선택</button>
-                  <button onclick="toggleDeptTargets('${dept}',false)" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:10px;text-decoration:underline;padding:0;font-family:inherit">해제</button>
-                </div>
-                ${deptEmps.map(e=>`
-                  <label style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-bottom:1px solid #f1f5f9;cursor:pointer" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
-                    <input type="checkbox" class="target-checkbox" value="${e.id}" data-name="${e.name}" data-dept="${e.dept}" ${existingTargetIds.includes(e.id)?'disabled checked':''} style="width:15px;height:15px;cursor:pointer">
-                    <div>
-                      <span style="font-size:13px;font-weight:600">${e.name}</span>
-                      <span style="font-size:11px;color:#64748b;margin-left:6px">${e.role}</span>
-                      ${existingTargetIds.includes(e.id)?'<span style="font-size:10px;color:#10b981;margin-left:4px">✓ 지정됨</span>':''}
-                    </div>
-                  </label>`).join('')}
-              </div>`;
-            }).join('');
-          })()}
-        </div>
-      </div>
-
-      <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <div style="font-size:14px;font-weight:700">평가자 선택 <span style="font-size:11px;color:#64748b;font-weight:400">(복수 선택 가능)</span></div>
-          <div style="display:flex;gap:6px">
-            <button onclick="toggleAllEvaluators(true)" class="btn btn-primary" style="font-size:11px;padding:4px 10px">전체 선택</button>
-            <button onclick="toggleAllEvaluators(false)" class="btn btn-gray" style="font-size:11px;padding:4px 10px">전체 해제</button>
-          </div>
-        </div>
-        <div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;max-height:200px;overflow-y:auto;margin-bottom:12px">
-          ${allEmployees.filter(e=>e.leader_role).map(e=>`
-            <label style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #f1f5f9;cursor:pointer" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
-              <input type="checkbox" class="evaluator-checkbox" value="${e.id}" data-name="${e.name}" data-leader-role="${e.leader_role||''}" style="width:16px;height:16px;cursor:pointer">
-              <div>
-                <div style="font-size:13px;font-weight:600">${e.name} <span style="font-size:11px;background:#3b82f615;color:#3b82f6;padding:1px 6px;border-radius:8px">${e.leader_role}</span></div>
-                <div style="font-size:11px;color:#64748b">${e.dept} · ${e.role}</div>
-              </div>
-            </label>`).join('')}
-        </div>
-
-        <button class="btn btn-primary" style="width:100%;margin-bottom:16px" onclick="addAssign('${periodId}','${type}')">선택한 대상자 추가하기</button>
-
-        <div style="font-size:14px;font-weight:700;margin-bottom:10px">지정된 목록 <span style="font-size:12px;color:#64748b;font-weight:400">(${existing.length}명)</span></div>
-        <div id="assign-list" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;max-height:200px;overflow-y:auto">
-          ${existing.length ? existing.map(a=>`
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:13px">
-              <div>
-                <span style="font-weight:600">${a.target_name}</span>
-                <span style="color:#64748b;font-size:11px;margin-left:8px">← ${a.evaluator_name}</span>
-                ${a.evaluator_type ? `<span style="margin-left:6px;background:#8b5cf615;color:#8b5cf6;padding:2px 6px;border-radius:8px;font-size:10px">${a.evaluator_type}</span>` : ''}
-              </div>
-              <button onclick="removeAssign('${a.id}','${type}','${periodId}')" class="btn btn-danger" style="font-size:10px;padding:2px 8px">삭제</button>
-            </div>`).join('') : '<div class="empty" style="padding:20px">지정된 대상자가 없어요</div>'}
-        </div>
-      </div>
+      ${targetSection}
+      ${rightPanel}
     </div>`;
 }
 
@@ -1672,35 +1690,40 @@ function toggleAllTargets(checked) {
   document.querySelectorAll('.target-checkbox:not(:disabled)').forEach(cb => cb.checked = checked);
 }
 
-// ★ 수정 1: evalType null 버그 수정 ★
 async function addAssign(periodId, type) {
   const checkedTargets = [...document.querySelectorAll('.target-checkbox:checked:not(:disabled)')].map(cb=>({id:cb.value, name:cb.dataset.name}));
-  const checkedEvaluators = [...document.querySelectorAll('.evaluator-checkbox:checked')].map(cb=>({
-    id: cb.value,
-    name: cb.dataset.name,
-    leaderRole: cb.dataset.leaderRole || ''
-  }));
   if(!checkedTargets.length) return alert('대상자를 선택해주세요.');
-  if(!checkedEvaluators.length) return alert('평가자를 선택해주세요.');
 
-  // 평가자 유형을 leader_role 기반으로 자동 결정
-  const roleToEvalType = (leaderRole) => {
-    if(leaderRole === '대표' || leaderRole === '팀장') return '3차(팀장)';
-    if(leaderRole === '부팀장') return '2차(부팀장)';
-    return '평가자';
-  };
+  if(type === 'peer') {
+    for(const target of checkedTargets) {
+      await api('peer_targets','POST',{period_id:periodId,target_id:target.id,target_name:target.name});
+    }
+  } else {
+    const checkedEvaluators = [...document.querySelectorAll('.evaluator-checkbox:checked')].map(cb=>({
+      id: cb.value,
+      name: cb.dataset.name,
+      leaderRole: cb.dataset.leaderRole || ''
+    }));
+    if(!checkedEvaluators.length) return alert('평가자를 선택해주세요.');
 
-  for(const target of checkedTargets) {
-    for(const evaluator of checkedEvaluators) {
-      const evalType = roleToEvalType(evaluator.leaderRole); // ← null 대신 실제 유형
-      if(type === 'probation') {
-        await api('probation_targets','POST',{period_id:periodId,target_id:target.id,target_name:target.name,evaluator_id:evaluator.id,evaluator_name:evaluator.name,evaluator_type:evalType});
-        const alreadySelf = await api(`probation_targets?period_id=eq.${periodId}&target_id=eq.${target.id}&evaluator_id=eq.${target.id}`);
-        if(!alreadySelf || alreadySelf.length === 0) {
-          await api('probation_targets','POST',{period_id:periodId,target_id:target.id,target_name:target.name,evaluator_id:target.id,evaluator_name:target.name,evaluator_type:'1차(셀프)'});
+    const roleToEvalType = (leaderRole) => {
+      if(leaderRole === '대표' || leaderRole === '팀장') return '3차(팀장)';
+      if(leaderRole === '부팀장') return '2차(부팀장)';
+      return '평가자';
+    };
+
+    for(const target of checkedTargets) {
+      for(const evaluator of checkedEvaluators) {
+        const evalType = roleToEvalType(evaluator.leaderRole);
+        if(type === 'probation') {
+          await api('probation_targets','POST',{period_id:periodId,target_id:target.id,target_name:target.name,evaluator_id:evaluator.id,evaluator_name:evaluator.name,evaluator_type:evalType});
+          const alreadySelf = await api(`probation_targets?period_id=eq.${periodId}&target_id=eq.${target.id}&evaluator_id=eq.${target.id}`);
+          if(!alreadySelf || alreadySelf.length === 0) {
+            await api('probation_targets','POST',{period_id:periodId,target_id:target.id,target_name:target.name,evaluator_id:target.id,evaluator_name:target.name,evaluator_type:'1차(셀프)'});
+          }
+        } else {
+          await api('leader_assign','POST',{period_id:periodId,target_id:target.id,target_name:target.name,evaluator_id:evaluator.id,evaluator_name:evaluator.name});
         }
-      } else {
-        await api('leader_assign','POST',{period_id:periodId,target_id:target.id,target_name:target.name,evaluator_id:evaluator.id,evaluator_name:evaluator.name});
       }
     }
   }
@@ -1712,7 +1735,7 @@ async function addAssign(periodId, type) {
 }
 
 async function removeAssign(id, type, periodId) {
-  const table = type === 'probation' ? 'probation_targets' : 'leader_assign';
+  const table = type === 'probation' ? 'probation_targets' : type === 'peer' ? 'peer_targets' : 'leader_assign';
   await api(`${table}?id=eq.${id}`, 'DELETE');
   const titleEl = document.getElementById('assign-title').textContent;
   const match = titleEl.match(/\[(.+)\]/);
@@ -1741,6 +1764,7 @@ async function deletePeriod(id) {
   if(!confirm('삭제하시겠어요? 관련 평가 데이터도 함께 삭제됩니다.')) return;
   // 자식 테이블부터 순서대로 삭제 (FK 제약 오류 방지)
   await api(`peer_evaluations?period_id=eq.${id}`,'DELETE');
+  await api(`peer_targets?period_id=eq.${id}`,'DELETE');
   await api(`leader_evaluations?period_id=eq.${id}`,'DELETE');
   await api(`probation_evaluations?period_id=eq.${id}`,'DELETE');
   await api(`probation_targets?period_id=eq.${id}`,'DELETE');
@@ -1827,10 +1851,16 @@ async function renderPeerEval() {
   }
 
   const period = periods[0];
-  const submitted = await api(`peer_evaluations?period_id=eq.${period.id}&evaluator_id=eq.${currentEmp.id}`) || [];
-  const submittedTargets = submitted.map(s=>s.target_id);
-
-  const otherEmps = allEmployees.filter(e=>e.id !== currentEmp.id);
+  const [submitted, peerTargets] = await Promise.all([
+    api(`peer_evaluations?period_id=eq.${period.id}&evaluator_id=eq.${currentEmp.id}`) || [],
+    api(`peer_targets?period_id=eq.${period.id}`) || []
+  ]);
+  const peerTargetIds = (peerTargets||[]).map(t=>t.target_id);
+  const eligibleEmps = allEmployees.filter(e=>
+    e.id !== currentEmp.id &&
+    e.dept === currentEmp.dept &&
+    peerTargetIds.includes(e.id)
+  );
   const categories = ['책임감','업무성과','협업/커뮤니케이션','문제해결','조직문화 기여'];
 
   document.getElementById('peer-eval-content').innerHTML = `
@@ -1838,8 +1868,9 @@ async function renderPeerEval() {
       <div style="font-weight:700;color:#0369a1">${period.title}</div>
       <div style="font-size:12px;color:#0284c7;margin-top:4px">${period.start_date||''} ~ ${period.end_date||''}</div>
     </div>
-    <div style="color:#64748b;font-size:13px;margin-bottom:16px">이번 분기 동안 긍정적인 영향을 준 동료를 최대 2명 선택해주세요.</div>
-    ${submitted.length >= 2 ? '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;color:#16a34a;font-weight:600">✅ 이미 제출하셨습니다! 감사합니다 😊</div>' : `
+    <div style="color:#64748b;font-size:13px;margin-bottom:16px">같은 팀에서 긍정적인 영향을 준 동료를 최대 2명 선택해주세요.</div>
+    ${!eligibleEmps.length ? '<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:16px;color:#c2410c;font-size:13px">관리자가 아직 대상자를 지정하지 않았거나, 같은 팀에 지정된 대상자가 없어요.</div>' :
+    submitted.length >= 2 ? '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;color:#16a34a;font-weight:600">✅ 이미 제출하셨습니다! 감사합니다 😊</div>' : `
     <div id="peer-form">
       ${[1,2].map(n => `
         <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:16px">
@@ -1848,7 +1879,7 @@ async function renderPeerEval() {
             <div style="font-size:12px;color:#64748b;margin-bottom:4px">동료 선택</div>
             <select id="peer-target-${n}" style="width:100%">
               <option value="">선택해주세요</option>
-              ${otherEmps.map(e=>`<option value="${e.id}" data-name="${e.name}">${e.name} (${e.dept} · ${e.role})</option>`).join('')}
+              ${eligibleEmps.map(e=>`<option value="${e.id}" data-name="${e.name}">${e.name} (${e.role})</option>`).join('')}
             </select>
           </div>
           <div style="margin-bottom:10px">
@@ -2534,15 +2565,27 @@ async function renderAdminPeerEval() {
   if(!periods.length) { document.getElementById('admin-eval-peer-content').innerHTML='<div class="empty">진행 중인 상호평가가 없어요</div>'; return; }
 
   const period = periods[0];
-  const submitted = await api(`peer_evaluations?period_id=eq.${period.id}&evaluator_id=eq.${emp.id}`) || [];
+  const [submitted, peerTargets] = await Promise.all([
+    api(`peer_evaluations?period_id=eq.${period.id}&evaluator_id=eq.${emp.id}`),
+    api(`peer_targets?period_id=eq.${period.id}`)
+  ]);
+  const peerTargetIds = (peerTargets||[]).map(t=>t.target_id);
+  const eligibleEmps = allEmployees.filter(e=>
+    e.id !== emp.id &&
+    e.dept === emp.dept &&
+    peerTargetIds.includes(e.id)
+  );
 
-  if(submitted.length >= 2) {
+  if(!eligibleEmps.length) {
+    document.getElementById('admin-eval-peer-content').innerHTML='<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:16px;color:#c2410c;font-size:13px">관리자가 아직 대상자를 지정하지 않았거나, 같은 팀에 지정된 대상자가 없어요.</div>';
+    return;
+  }
+  if((submitted||[]).length >= 2) {
     document.getElementById('admin-eval-peer-content').innerHTML='<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;color:#16a34a;font-weight:600">✅ 이미 제출하셨습니다!</div>';
     return;
   }
 
   const categories = ['책임감','업무성과','협업/커뮤니케이션','문제해결','조직문화 기여'];
-  const otherEmps = allEmployees.filter(e=>e.id !== emp.id);
 
   document.getElementById('admin-eval-peer-content').innerHTML = `
     <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:12px;margin-bottom:16px">
@@ -2555,7 +2598,7 @@ async function renderAdminPeerEval() {
           <div style="font-size:12px;color:#64748b;margin-bottom:4px">동료 선택</div>
           <select id="admin-peer-target-${n}" style="width:100%">
             <option value="">선택해주세요</option>
-            ${otherEmps.map(e=>`<option value="${e.id}" data-name="${e.name}">${e.name} (${e.dept})</option>`).join('')}
+            ${eligibleEmps.map(e=>`<option value="${e.id}" data-name="${e.name}">${e.name} (${e.role})</option>`).join('')}
           </select>
         </div>
         <div style="margin-bottom:8px">
