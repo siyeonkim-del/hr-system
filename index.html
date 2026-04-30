@@ -660,7 +660,7 @@
       <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">부서</div><input type="text" id="edit-dept" placeholder="(선택)" style="width:100%"></div>
       <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">직무 *</div><input type="text" id="edit-role" style="width:100%"></div>
       <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">이메일</div><input type="email" id="edit-email" style="width:100%"></div>
-      <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">연락처</div><input type="text" id="edit-phone" style="width:100%"></div>
+      <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">연락처</div><input type="text" id="edit-phone" placeholder="010-0000-0000" style="width:100%" oninput="this.value=formatPhone(this.value)"></div>
       <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">입사일</div><input type="date" id="edit-joindate" style="width:100%"></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -679,7 +679,7 @@
       <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">부서</div><input type="text" id="new-dept" list="new-dept-list" placeholder="부서 선택 또는 입력" style="width:100%" autocomplete="off"><datalist id="new-dept-list"></datalist></div>
       <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">직무 *</div><input type="text" id="new-role" list="new-role-list" placeholder="직무 선택 또는 입력" style="width:100%" autocomplete="off"><datalist id="new-role-list"></datalist></div>
       <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">이메일</div><input type="email" id="new-email" placeholder="hong@zenithcompany.net" style="width:100%"></div>
-      <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">연락처</div><input type="text" id="new-phone" placeholder="010-0000-0000" style="width:100%"></div>
+      <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">연락처</div><input type="text" id="new-phone" placeholder="010-0000-0000" style="width:100%" oninput="this.value=formatPhone(this.value)"></div>
       <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">입사일</div><input type="date" id="new-joindate" style="width:100%"></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -822,6 +822,18 @@ function showPage(id, btn) {
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function formatPhone(v) {
+  const d = v.replace(/\D/g, '').slice(0, 11);
+  if(d.startsWith('02')) {
+    if(d.length < 6) return d;
+    if(d.length <= 9) return d.replace(/(\d{2})(\d{3})(\d{0,4})/, '$1-$2-$3').replace(/-+$/, '');
+    return d.replace(/(\d{2})(\d{4})(\d{0,4})/, '$1-$2-$3').replace(/-+$/, '');
+  }
+  if(d.length < 4) return d;
+  if(d.length <= 10) return d.replace(/(\d{3})(\d{3})(\d{0,4})/, '$1-$2-$3').replace(/-+$/, '');
+  return d.replace(/(\d{3})(\d{4})(\d{0,4})/, '$1-$2-$3').replace(/-+$/, '');
+}
 
 // DASHBOARD
 async function renderDashboard() {
