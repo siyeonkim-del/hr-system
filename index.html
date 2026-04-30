@@ -610,10 +610,41 @@
       </div>
     </div>
     <div id="detail-rows"></div>
-    <div style="display:flex;gap:8px;margin-top:20px">
+    <button id="detail-perms-btn" onclick="openMenuPermsModal(currentDetailEmpId)" style="width:100%;margin-top:16px;padding:10px;background:#10b98115;border:1px solid #10b98144;border-radius:8px;color:#10b981;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">메뉴 접근 권한 설정</button>
+    <div style="display:flex;gap:8px;margin-top:8px">
       <button class="btn btn-danger" id="detail-delete-btn">삭제</button>
       <button class="btn btn-primary" id="detail-edit-btn">수정</button>
       <button class="btn btn-gray" style="flex:1" onclick="closeModal('emp-detail-modal')">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 메뉴 권한 설정 모달 -->
+<div class="modal-bg" id="menu-perms-modal" onclick="closeModal('menu-perms-modal')">
+  <div class="modal" onclick="event.stopPropagation()" style="width:360px">
+    <h3>메뉴 접근 권한 설정</h3>
+    <div style="font-size:12px;color:#64748b;margin-bottom:16px" id="perms-modal-empname"></div>
+    <div style="font-size:12px;color:#94a3b8;margin-bottom:14px">내 정보는 항상 접근 가능합니다.</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600">
+        <input type="checkbox" id="perm-my-leave" style="width:16px;height:16px;cursor:pointer"> 휴가 신청
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600">
+        <input type="checkbox" id="perm-peer-eval" style="width:16px;height:16px;cursor:pointer"> 상호평가
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600">
+        <input type="checkbox" id="perm-leader-eval" style="width:16px;height:16px;cursor:pointer"> 리더평가
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600">
+        <input type="checkbox" id="perm-probation-eval" style="width:16px;height:16px;cursor:pointer"> 수습평가
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600">
+        <input type="checkbox" id="perm-org" style="width:16px;height:16px;cursor:pointer"> 조직도
+      </label>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:1" id="perms-save-btn">저장하기</button>
+      <button class="btn btn-gray" onclick="closeModal('menu-perms-modal')">취소</button>
     </div>
   </div>
 </div>
@@ -663,7 +694,14 @@ const SUPABASE_KEY = 'sb_publishable_Tk_--5mPs_c8dOlYcVO-Ew_JfqpqUFZ';
 const palette = ['#3b82f6','#8b5cf6','#f59e0b','#10b981','#ef4444','#ec4899','#06b6d4','#84cc16'];
 const deptColors = {};
 const statusColors = { '승인':'#10b981','대기':'#f59e0b','반려':'#ef4444','취소':'#94a3b8' };
-let allEmployees = [], allLeaves = [];
+const EMP_MENUS = [
+  {id:'my-leave',     label:'휴가 신청'},
+  {id:'peer-eval',    label:'상호평가'},
+  {id:'leader-eval',  label:'리더평가'},
+  {id:'probation-eval',label:'수습평가'},
+  {id:'org',          label:'조직도'},
+];
+let allEmployees = [], allLeaves = [], currentDetailEmpId = null;
 
 async function api(path, method='GET', body=null) {
   const opts = {
@@ -864,7 +902,8 @@ function filterEmps() {
 }
 
 function openEmpDetail(id) {
-  const emp = allEmployees.find(e=>e.id===id); if(!emp) return;
+  const emp = allEmployees.find(e=>String(e.id)===String(id)); if(!emp) return;
+  currentDetailEmpId = String(emp.id);
   const c = getDeptColor(emp.dept);
   const av = document.getElementById('detail-avatar');
   av.textContent = '';
@@ -879,6 +918,34 @@ function openEmpDetail(id) {
   document.getElementById('detail-delete-btn').onclick=()=>deleteEmployee(id);
   document.getElementById('detail-edit-btn').onclick=()=>openEditModal(id);
   document.getElementById('emp-detail-modal').classList.add('open');
+}
+
+function openMenuPermsModal(empId) {
+  const emp = allEmployees.find(e=>e.id===empId); if(!emp) return;
+  let perms = null;
+  if(emp.menu_permissions) { try { perms = JSON.parse(emp.menu_permissions); } catch(e) {} }
+  document.getElementById('perms-modal-empname').textContent = emp.name + '님의 메뉴 권한';
+  EMP_MENUS.forEach(m=>{
+    const cb = document.getElementById('perm-'+m.id);
+    if(cb) cb.checked = !perms || perms.includes(m.id);
+  });
+  document.getElementById('perms-save-btn').onclick = async ()=>{
+    const allowed = EMP_MENUS.filter(m=>document.getElementById('perm-'+m.id)?.checked).map(m=>m.id);
+    await api(`employees?id=eq.${empId}`,'PATCH',{menu_permissions:JSON.stringify(allowed)});
+    allEmployees = (await api('employees?select=*'))||[];
+    closeModal('menu-perms-modal');
+    alert('메뉴 권한이 저장되었습니다.');
+  };
+  document.getElementById('menu-perms-modal').classList.add('open');
+}
+
+function applyEmpMenuPerms(rawPerms) {
+  let allowed = null;
+  if(rawPerms) { try { allowed = JSON.parse(rawPerms); } catch(e) {} }
+  EMP_MENUS.forEach(m=>{
+    const btn = document.getElementById('etab-'+m.id);
+    if(btn) btn.style.display = (!allowed||allowed.includes(m.id)) ? '' : 'none';
+  });
 }
 
 async function deleteEmployee(id) {
@@ -1217,6 +1284,7 @@ async function loadUserAndRoute() {
     if(currentEmp) {
       document.getElementById('emp-sidebar-name').textContent = currentEmp.name;
       document.getElementById('emp-sidebar-role').textContent = `${currentEmp.dept} · ${currentEmp.role}`;
+      applyEmpMenuPerms(currentEmp.menu_permissions);
     }
     showEmpTab('my-info');
   }
