@@ -676,8 +676,8 @@
     <h3>직원 추가</h3>
     <div class="form-grid">
       <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">이름 *</div><input type="text" id="new-name" placeholder="홍길동" style="width:100%"></div>
-      <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">부서</div><input type="text" id="new-dept" placeholder="콘텐츠팀 (선택)" style="width:100%"></div>
-      <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">직무 *</div><input type="text" id="new-role" placeholder="아트 디렉터" style="width:100%"></div>
+      <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">부서</div><input type="text" id="new-dept" list="new-dept-list" placeholder="부서 선택 또는 입력" style="width:100%" autocomplete="off"><datalist id="new-dept-list"></datalist></div>
+      <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">직무 *</div><input type="text" id="new-role" list="new-role-list" placeholder="직무 선택 또는 입력" style="width:100%" autocomplete="off"><datalist id="new-role-list"></datalist></div>
       <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">이메일</div><input type="email" id="new-email" placeholder="hong@zenithcompany.net" style="width:100%"></div>
       <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">연락처</div><input type="text" id="new-phone" placeholder="010-0000-0000" style="width:100%"></div>
       <div><div style="font-size:12px;color:#64748b;margin-bottom:4px">입사일</div><input type="date" id="new-joindate" style="width:100%"></div>
@@ -957,6 +957,10 @@ async function deleteEmployee(id) {
 
 function openAddEmpModal() {
   ['new-name','new-dept','new-role','new-email','new-phone','new-joindate'].forEach(id=>document.getElementById(id).value='');
+  const depts = [...new Set(allEmployees.map(e=>e.dept).filter(Boolean))].sort();
+  const roles = [...new Set(allEmployees.map(e=>e.role).filter(Boolean))].sort();
+  document.getElementById('new-dept-list').innerHTML = depts.map(d=>`<option value="${d}">`).join('');
+  document.getElementById('new-role-list').innerHTML = roles.map(r=>`<option value="${r}">`).join('');
   document.getElementById('add-emp-modal').classList.add('open');
 }
 
